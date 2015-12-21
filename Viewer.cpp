@@ -185,7 +185,10 @@ Viewer::keyboard(unsigned char c, int /*x*/, int /*y*/)
             break;
         case 'c':
             changedisp=!changedisp;
+            if(changedisp==true)std::cout<<"disp=-1 mode"<<std::endl;
+            else std::cout<<"original mode"<<std::endl;
             updateDisplayList();
+            break;
         case '+':
             d+=0.1;
             std::cout<<"value of d = "<<d<<std::endl;
@@ -896,7 +899,8 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
 
     if(distance>thr)disp=0;
-    else disp=d*exp(-alpha*pow(distance,2));
+    else if(changedisp==true)disp=-1;
+    else if(changedisp==false)disp=d*exp(-alpha*pow(distance,2));
 
     Point p(p_neighbor.x+disp*normal_x,
 	    p_neighbor.y+disp*normal_y,
