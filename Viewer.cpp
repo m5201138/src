@@ -47,14 +47,18 @@
 #endif
 
 
-//#define POISSON 1
+#define POISSON 1
 //#define HRBF 1
-#define HRBF_CLOSED 1
+//#define HRBF_CLOSED 1
 
 
 int  Viewer::windowSize[2] = { 800, 800 };
 bool Viewer::renderWireframe = false;
 bool Viewer::renderSelected = false;
+bool changedisp=false;
+
+//use in selectedVertDeformation
+double d=0.1;
 
 std::set<unsigned> Viewer::selectedVert;
 TriMesh* Viewer::meshPtr = 0;
@@ -157,30 +161,41 @@ initMCGrid()
 void
 Viewer::keyboard(unsigned char c, int /*x*/, int /*y*/)
 {
-  switch(c)
+    switch(c)
     {
-    case 27:
-      exit(0);
-      break;
-    case 'w':
-      renderWireframe = !renderWireframe;
-      updateDisplayList();
-      break;
-    case 's':
-      renderSelected = !renderSelected;
-      std::cout<<renderSelected<<std::endl;
-      updateDisplayList();
-      break;
-    case 'r':
-      clearData();
-      updateDisplayList();
-      break;
+        case 27:
+            exit(0);
+            break;
+        case 'w':
+            renderWireframe = !renderWireframe;
+            updateDisplayList();
+            break;
+        case 's':
+            renderSelected = !renderSelected;
+            std::cout<<renderSelected<<std::endl;
+            updateDisplayList();
+            break;
+        case 'r':
+            clearData();
+            updateDisplayList();
+            break;
             
-    case '/':
-      takeScreenshot();
-      break;
-    default:
-      break;
+        case '/':
+            takeScreenshot();
+            break;
+        case 'c':
+            changedisp=!changedisp;
+            updateDisplayList();
+        case '+':
+            d+=0.1;
+            std::cout<<"value of d = "<<d<<std::endl;
+            break;
+        case '-':
+            d-=0.1;
+            std::cout<<"value of d = "<<d<<std::endl;
+            break;
+        default:
+            break;
     }
 }
    
@@ -875,8 +890,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   double normal_z = selected_normal.z;
 
   //meshPtr->computeVertNormals(vertNormal);
-  double distance,thr=0.2,d=0.1,alpha=200.0,disp;
-
+  double distance,thr=0.2,alpha=200.0,disp;
   for(unsigned i=0;i<meshPtr->numVerts();i++){
     Vec3 p_neighbor = meshPtr->getVertPos(i);
     distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
