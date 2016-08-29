@@ -893,13 +893,13 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   double normal_z = selected_normal.z;
 
   //meshPtr->computeVertNormals(vertNormal);
-  double distance,thr=0.2,alpha=200.0,disp;
+  double distance,thr=0.09,alpha=200.0,disp;
   for(unsigned i=0;i<meshPtr->numVerts();i++){
     Vec3 p_neighbor = meshPtr->getVertPos(i);
     distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
 
     if(distance>thr)disp=0;
-    else if(changedisp==true)disp=-1;
+    else if(changedisp==true)disp=-d*exp(-alpha*pow(distance,2));
     else if(changedisp==false)disp=d*exp(-alpha*pow(distance,2));
 
     Point p(p_neighbor.x+disp*normal_x,
@@ -965,8 +965,8 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
 #ifdef HRBF_CLOSED
   //HRBF_closed
   double rho = CGAL::compute_average_spacing(points.begin(), points.end(),CGAL::First_of_pair_property_map<PointVectorPair>(),nb_neighbors2);
-  rho = rho * 20.0;
-  double eta = 100.0 / (rho*rho);
+  rho = rho * 5;
+    double eta = 50.0 / (rho*rho);
   std::cout << "eta: " << eta << " ; rho: " << rho << std::endl;
 
   // Evaluate on the grid
