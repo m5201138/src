@@ -6,25 +6,25 @@
 
 #IncludeRegexTransform: 
 
-/Users/s1200045/src/CIsoSurface.cpp
+/Users/m5201138/src/CIsoSurface.cpp
 stdio.h
 -
 math.h
 -
 CIsoSurface.h
-/Users/s1200045/src/CIsoSurface.h
+/Users/m5201138/src/CIsoSurface.h
 
-/Users/s1200045/src/CIsoSurface.h
+/Users/m5201138/src/CIsoSurface.h
 map
 -
 vector
 -
 Vectors.h
-/Users/s1200045/src/Vectors.h
+/Users/m5201138/src/Vectors.h
 
-/Users/s1200045/src/Camera.cpp
+/Users/m5201138/src/Camera.cpp
 Camera.h
-/Users/s1200045/src/Camera.h
+/Users/m5201138/src/Camera.h
 OpenGL/gl.h
 -
 GLUT/glut.h
@@ -34,11 +34,11 @@ GL/gl.h
 GL/glut.h
 -
 
-/Users/s1200045/src/Camera.h
+/Users/m5201138/src/Camera.h
 Quaternion.h
-/Users/s1200045/src/Quaternion.h
+/Users/m5201138/src/Quaternion.h
 
-/Users/s1200045/src/Image.cpp
+/Users/m5201138/src/Image.cpp
 cmath
 -
 cstdlib
@@ -48,27 +48,27 @@ fstream
 iostream
 -
 Image.h
-/Users/s1200045/src/Image.h
+/Users/m5201138/src/Image.h
 
-/Users/s1200045/src/Image.h
+/Users/m5201138/src/Image.h
 vector
 -
 string
 -
 
-/Users/s1200045/src/Quaternion.h
+/Users/m5201138/src/Quaternion.h
 cmath
 -
 
-/Users/s1200045/src/Shader.cpp
+/Users/m5201138/src/Shader.cpp
 Shader.h
-/Users/s1200045/src/Shader.h
+/Users/m5201138/src/Shader.h
 fstream
 -
 iostream
 -
 
-/Users/s1200045/src/Shader.h
+/Users/m5201138/src/Shader.h
 GLUT/glut.h
 -
 OpenGL/gl.h
@@ -84,11 +84,11 @@ GL/glext.h
 string
 -
 
-/Users/s1200045/src/TriMesh.cpp
+/Users/m5201138/src/TriMesh.cpp
 TriMesh.h
-/Users/s1200045/src/TriMesh.h
+/Users/m5201138/src/TriMesh.h
 Triangle.h
-/Users/s1200045/src/Triangle.h
+/Users/m5201138/src/Triangle.h
 map
 -
 fstream
@@ -100,29 +100,29 @@ iostream
 cassert
 -
 
-/Users/s1200045/src/TriMesh.h
+/Users/m5201138/src/TriMesh.h
 types.h
-/Users/s1200045/src/types.h
+/Users/m5201138/src/types.h
 vector
 -
 Vectors.h
-/Users/s1200045/src/Vectors.h
+/Users/m5201138/src/Vectors.h
 
-/Users/s1200045/src/Triangle.h
+/Users/m5201138/src/Triangle.h
 types.h
-/Users/s1200045/src/types.h
+/Users/m5201138/src/types.h
 cmath
 -
 
-/Users/s1200045/src/Vectors.cpp
+/Users/m5201138/src/Vectors.cpp
 Vectors.h
-/Users/s1200045/src/Vectors.h
+/Users/m5201138/src/Vectors.h
 stdio.h
 -
 
-/Users/s1200045/src/Vectors.h
+/Users/m5201138/src/Vectors.h
 
-/Users/s1200045/src/Viewer.cpp
+/Users/m5201138/src/Viewer.cpp
 CGAL/Exact_predicates_inexact_constructions_kernel.h
 -
 CGAL/pca_estimate_normals.h
@@ -134,13 +134,15 @@ CGAL/property_map.h
 eigen/Eigen/Core
 -
 hrbf_core.h
-/Users/s1200045/src/hrbf_core.h
+/Users/m5201138/src/hrbf_core.h
 hrbf_phi_funcs.h
-/Users/s1200045/src/hrbf_phi_funcs.h
+/Users/m5201138/src/hrbf_phi_funcs.h
 CIsoSurface.h
-/Users/s1200045/src/CIsoSurface.h
+/Users/m5201138/src/CIsoSurface.h
 Vectors.h
-/Users/s1200045/src/Vectors.h
+/Users/m5201138/src/Vectors.h
+implicit_function.h
+/Users/m5201138/src/implicit_function.h
 utility
 -
 fstream
@@ -171,6 +173,14 @@ CGAL/Inverse_index.h
 -
 CGAL/trace.h
 -
+CGAL/Polyhedron_incremental_builder_3.h
+-
+CGAL/Min_sphere_d.h
+-
+CGAL/Min_sphere_annulus_d_traits_3.h
+-
+CGAL/Min_sphere_d.h
+-
 cstdlib
 -
 iostream
@@ -182,11 +192,11 @@ cassert
 limits
 -
 Viewer.h
-/Users/s1200045/src/Viewer.h
+/Users/m5201138/src/Viewer.h
 Image.h
-/Users/s1200045/src/Image.h
+/Users/m5201138/src/Image.h
 TriMesh.h
-/Users/s1200045/src/TriMesh.h
+/Users/m5201138/src/TriMesh.h
 GLUT/glut.h
 -
 OpenGL/gl.h
@@ -200,19 +210,19 @@ GL/glext.h
 GL/glut.h
 -
 
-/Users/s1200045/src/Viewer.h
+/Users/m5201138/src/Viewer.h
 Camera.h
-/Users/s1200045/src/Camera.h
+/Users/m5201138/src/Camera.h
 Shader.h
-/Users/s1200045/src/Shader.h
+/Users/m5201138/src/Shader.h
 types.h
-/Users/s1200045/src/types.h
+/Users/m5201138/src/types.h
 TriMesh.h
-/Users/s1200045/src/TriMesh.h
+/Users/m5201138/src/TriMesh.h
 set
 -
 
-/Users/s1200045/src/hrbf_core.h
+/Users/m5201138/src/hrbf_core.h
 eigen/Eigen/LU
 -
 eigen/Eigen/Cholesky
@@ -222,27 +232,47 @@ vector
 iostream
 -
 
-/Users/s1200045/src/hrbf_phi_funcs.h
+/Users/m5201138/src/hrbf_phi_funcs.h
 
-/Users/s1200045/src/main.cpp
+/Users/m5201138/src/implicit_function.h
+CGAL/Exact_predicates_inexact_constructions_kernel.h
+-
+CGAL/number_utils.h
+-
+eigen/Eigen/LU
+-
+eigen/Eigen/Cholesky
+-
+vector
+-
+iostream
+-
+hrbf_core.h
+/Users/m5201138/src/hrbf_core.h
+hrbf_phi_funcs.h
+/Users/m5201138/src/hrbf_phi_funcs.h
+CGAL/Implicit_surface_3.h
+-
+
+/Users/m5201138/src/main.cpp
 cstdlib
 -
 iostream
 -
 Viewer.h
-/Users/s1200045/src/Viewer.h
+/Users/m5201138/src/Viewer.h
 TriMesh.h
-/Users/s1200045/src/TriMesh.h
+/Users/m5201138/src/TriMesh.h
 
-/Users/s1200045/src/types.cpp
+/Users/m5201138/src/types.cpp
 cmath
 -
 iostream
 -
 types.h
-/Users/s1200045/src/types.h
+/Users/m5201138/src/types.h
 
-/Users/s1200045/src/types.h
+/Users/m5201138/src/types.h
 
 /opt/local/include/CGAL/Aff_transformation_2.h
 CGAL/basic.h
@@ -2832,6 +2862,42 @@ CGAL/Mesher_level_default_implementations.h
 CGAL/tags.h
 -
 
+/opt/local/include/CGAL/Min_sphere_annulus_d_traits_3.h
+CGAL/Optimisation/Access_dimension_3.h
+-
+CGAL/Optimisation/Access_coordinates_begin_3.h
+-
+CGAL/Optimisation/Construct_point_3.h
+-
+
+/opt/local/include/CGAL/Min_sphere_d.h
+CGAL/basic.h
+-
+CGAL/Optimisation/assertions.h
+-
+CGAL/Optimisation/basic.h
+-
+CGAL/Min_sphere_d/Optimisation_sphere_d.h
+-
+list
+-
+iostream
+-
+CGAL/Min_sphere_d/Min_sphere_d_impl.h
+-
+
+/opt/local/include/CGAL/Min_sphere_d/Min_sphere_d_impl.h
+iterator
+-
+
+/opt/local/include/CGAL/Min_sphere_d/Optimisation_sphere_d.h
+CGAL/representation_tags.h
+-
+CGAL/Optimisation/basic.h
+-
+CGAL/Optimisation/assertions.h
+-
+
 /opt/local/include/CGAL/Min_sphere_of_points_d_traits_3.h
 CGAL/tags.h
 -
@@ -3025,6 +3091,40 @@ boost/any.hpp
 -
 boost/shared_ptr.hpp
 -
+
+/opt/local/include/CGAL/Optimisation/Access_coordinates_begin_3.h
+cstddef
+-
+iterator
+-
+
+/opt/local/include/CGAL/Optimisation/Access_dimension_3.h
+
+/opt/local/include/CGAL/Optimisation/Construct_point_3.h
+CGAL/Point_3.h
+-
+vector
+-
+functional
+-
+iterator
+-
+
+/opt/local/include/CGAL/Optimisation/assertions.h
+CGAL/Uncertain.h
+-
+
+/opt/local/include/CGAL/Optimisation/basic.h
+CGAL/basic.h
+-
+CGAL/Optimisation/assertions.h
+-
+CGAL/Optimisation/debug.h
+-
+CGAL/IO/Verbose_ostream.h
+-
+
+/opt/local/include/CGAL/Optimisation/debug.h
 
 /opt/local/include/CGAL/Origin.h
 CGAL/basic.h

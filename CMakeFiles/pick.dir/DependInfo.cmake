@@ -4,15 +4,15 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/Users/s1200045/src/CIsoSurface.cpp" "/Users/s1200045/src/CMakeFiles/pick.dir/CIsoSurface.cpp.o"
-  "/Users/s1200045/src/Camera.cpp" "/Users/s1200045/src/CMakeFiles/pick.dir/Camera.cpp.o"
-  "/Users/s1200045/src/Image.cpp" "/Users/s1200045/src/CMakeFiles/pick.dir/Image.cpp.o"
-  "/Users/s1200045/src/Shader.cpp" "/Users/s1200045/src/CMakeFiles/pick.dir/Shader.cpp.o"
-  "/Users/s1200045/src/TriMesh.cpp" "/Users/s1200045/src/CMakeFiles/pick.dir/TriMesh.cpp.o"
-  "/Users/s1200045/src/Vectors.cpp" "/Users/s1200045/src/CMakeFiles/pick.dir/Vectors.cpp.o"
-  "/Users/s1200045/src/Viewer.cpp" "/Users/s1200045/src/CMakeFiles/pick.dir/Viewer.cpp.o"
-  "/Users/s1200045/src/main.cpp" "/Users/s1200045/src/CMakeFiles/pick.dir/main.cpp.o"
-  "/Users/s1200045/src/types.cpp" "/Users/s1200045/src/CMakeFiles/pick.dir/types.cpp.o"
+  "/Users/m5201138/src/CIsoSurface.cpp" "/Users/m5201138/src/CMakeFiles/pick.dir/CIsoSurface.cpp.o"
+  "/Users/m5201138/src/Camera.cpp" "/Users/m5201138/src/CMakeFiles/pick.dir/Camera.cpp.o"
+  "/Users/m5201138/src/Image.cpp" "/Users/m5201138/src/CMakeFiles/pick.dir/Image.cpp.o"
+  "/Users/m5201138/src/Shader.cpp" "/Users/m5201138/src/CMakeFiles/pick.dir/Shader.cpp.o"
+  "/Users/m5201138/src/TriMesh.cpp" "/Users/m5201138/src/CMakeFiles/pick.dir/TriMesh.cpp.o"
+  "/Users/m5201138/src/Vectors.cpp" "/Users/m5201138/src/CMakeFiles/pick.dir/Vectors.cpp.o"
+  "/Users/m5201138/src/Viewer.cpp" "/Users/m5201138/src/CMakeFiles/pick.dir/Viewer.cpp.o"
+  "/Users/m5201138/src/main.cpp" "/Users/m5201138/src/CMakeFiles/pick.dir/main.cpp.o"
+  "/Users/m5201138/src/types.cpp" "/Users/m5201138/src/CMakeFiles/pick.dir/types.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "Clang")
 
@@ -27,7 +27,6 @@ set(CMAKE_TARGET_DEFINITIONS_CXX
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "."
   "/opt/local/include"
-  "/Users/s1200045/CGAL-4.7/include"
   "/opt/local/include/eigen3"
   "/System/Library/Frameworks/GLUT.framework/Headers"
   "/System/Library/Frameworks/OpenGL.framework"

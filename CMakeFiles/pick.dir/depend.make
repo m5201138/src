@@ -41,6 +41,7 @@ CMakeFiles/pick.dir/Viewer.cpp.o: Viewer.cpp
 CMakeFiles/pick.dir/Viewer.cpp.o: Viewer.h
 CMakeFiles/pick.dir/Viewer.cpp.o: hrbf_core.h
 CMakeFiles/pick.dir/Viewer.cpp.o: hrbf_phi_funcs.h
+CMakeFiles/pick.dir/Viewer.cpp.o: implicit_function.h
 CMakeFiles/pick.dir/Viewer.cpp.o: types.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Aff_transformation_2.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Aff_transformation_3.h
@@ -288,6 +289,10 @@ CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Mesher_level_visitors.
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Meshes/Double_map_container.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Meshes/Simple_map_container.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Meshes/Triangulation_mesher_level_traits_3.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Min_sphere_annulus_d_traits_3.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Min_sphere_d.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Min_sphere_d/Min_sphere_d_impl.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Min_sphere_d/Optimisation_sphere_d.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Min_sphere_of_points_d_traits_3.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Min_sphere_of_spheres_d.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Min_sphere_of_spheres_d/Min_sphere_of_spheres_d_configure.h
@@ -308,6 +313,12 @@ CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/NT_converter.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/N_step_adaptor_derived.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Needs_parens_as_product.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Object.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Optimisation/Access_coordinates_begin_3.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Optimisation/Access_dimension_3.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Optimisation/Construct_point_3.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Optimisation/assertions.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Optimisation/basic.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Optimisation/debug.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Origin.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Orthogonal_k_neighbor_search.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/PCA_util.h

@@ -9,7 +9,7 @@
 #include "hrbf_phi_funcs.h"
 #include "CIsoSurface.h"
 #include "Vectors.h"
-
+#include "implicit_function.h"
 #include <utility>
 #include <fstream>
 
@@ -26,6 +26,11 @@
 #include <CGAL/basic.h>
 #include <CGAL/Inverse_index.h>
 #include <CGAL/trace.h>
+#include <CGAL/Polyhedron_incremental_builder_3.h>
+#include <CGAL/Min_sphere_d.h>
+#include <CGAL/Min_sphere_annulus_d_traits_3.h>
+#include <CGAL/Min_sphere_d.h>
+
 
 #include <cstdlib>
 #include <iostream>
@@ -47,8 +52,8 @@
 #endif
 
 
-#define POISSON 1
-//#define HRBF 1
+//#define POISSON 1
+#define HRBF 1
 //#define HRBF_CLOSED 1
 
 
@@ -87,6 +92,18 @@ typedef CGAL::Point_with_normal_3<Kernel> Point_with_normal_3;
 typedef std::vector<Point_with_normal_3> PointNormalList;
 typedef std::vector<Point> PointList;
 typedef std::pair<Point, Vector> PointVectorPair;
+typedef CGAL::Surface_mesh_default_triangulation_3 Tr;
+typedef Tr::Geom_traits GT;
+//typedef CGAL::Cartesian_d<double>              K;
+typedef CGAL::Min_sphere_annulus_d_traits_3<Kernel> Traits;
+typedef CGAL::Min_sphere_d<Traits>             Min_sphere;
+//typedef K::Point_d point_d;
+//typedef FT (*Function)(Point);
+//typedef CGAL::Implicit_surface_3<Kernel, Function> Surface_3_hrbf;
+typedef implicit_function<FT,Point > Hrbf_function;
+typedef CGAL::Implicit_surface_3<Kernel, Hrbf_function> Surface_3_hrbf;
+
+
 // Precompute and keep the grids used by MC algorithm
 struct MCGrid {
   std::vector<Vector3> structuredGrid;
@@ -938,7 +955,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
 #ifdef HRBF
   HRBF_fit<double, 3, Rbf_pow3<double> > hrbf;
   hrbf.hermite_fit(points2, normals2);
-   
+  /*
   for (size_t i = 0; i < mcgrid.structuredGrid.size(); ++i) {
      mcgrid.results[i] = hrbf.eval(mcgrid.structuredGrid[i]);
   }
@@ -947,15 +964,65 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   for(int i=0;i<mcgrid.results.size();i++){
     resultarray[i] = mcgrid.results[i];
   }
+    for (std::size_t i = 0; i < points2.size(); ++i) {
+        Point pt(points2[i][0], points2[i][1], points2[i][2]);
+        Vector nm(normals2[i][0], normals2[i][1], normals2[i][2]);
+        Point_with_normal_3 pn(pt, nm);
+        pwn.push_back(pn);
+    }
+   */
+    FT averagespacing = CGAL::compute_average_spacing(points.begin(),
+                                                      points.end(),
+                                                      CGAL::First_of_pair_property_map<PointVectorPair>(),
+                                                      6);
+    int size=(int)points2.size();
+    PointList pt;
+    for(std::size_t i=0;i<points2.size();i++){
+        pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
+    }
+    Min_sphere  ms (pt.begin(), pt.end());
+    /*
+    for(int i=0;i<mcgrid.structuredGrid.size();i++){
+        pt.push_back(mcgrid.structuredGrid[i](0,0),mcgrid.structuredGrid[i](1,0),mcgrid.structuredGrid[i](2,0))
+    }
+    
+    Hrbf_reconstruction_function function(*func)(mcgrid.structuredGrid[i](0,0),mcgrid.structuredGrid[i](1,0),mcgrid.structuredGrid[i](2,0))
+    
+    Surface_3_double surface();
+    for(int i=0;i<mcgrid.results.size();i++){
+        surface[i]=resultarray[i];
+    */
+    Hrbf_function function(hrbf);
+    FT sm_angle = 20.0;
+    FT sm_radius = 5.0;
+    FT sm_distance = 0.15;
+   // Point inner_point = func.get_inner_point();
+    //Sphere bsphere = func.bounding_sphere();
+    //FT radius = std::sqrt(bsphere.squared_radius());
+    
+    FT sm_sphere_radius = 5.0 * 5;
+    FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
+    Surface_3_hrbf surface(function,
+                           Sphere(ms.center(),ms.squared_radius()*1.5));
 
-  ciso->GenerateSurface(resultarray, 0, 
-			mcgrid.subx-1, mcgrid.suby-1, mcgrid.subz-1, 
-			mcgrid.dx, mcgrid.dy, mcgrid.dz);
-  delete[] resultarray;
-
-  meshPtr->setData(ciso->m_ppt3dVertices, ciso->m_nVertices,
-		   ciso->m_piTriangleIndices, ciso->m_nTriangles);
-  meshPtr->normalize();
+    CGAL::Surface_mesh_default_criteria_3<STr>
+    criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+    STr tr;
+    tr.insert(vertices.begin(), vertices.end());
+    C2t3 c2t3(tr);
+    CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
+                            surface,  // implicit surface
+                            criteria, // meshing criteria
+                            CGAL::Manifold_with_boundary_tag());  // require manifold mesh
+    
+    SurfaceMesh output_mesh;
+    CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+    //SurfaceMesh output_mesh;
+    bool f;
+    
+    //f=compute_surface_mesh_CGAL(function,pwn,vertices,output_mesh);
+    
+    setMeshFromPolyhedron(output_mesh, meshPtr);
 #endif   
 
 
@@ -1007,7 +1074,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   FT sm_angle = 20.0;
   FT sm_radius = 5.0;
   FT sm_distance = 0.15;
-
+    
   Poisson_reconstruction_function
     function(pwn.begin(), pwn.end(),
 	     CGAL::make_normal_of_point_with_normal_pmap(PointList::value_type()));
