@@ -94,12 +94,8 @@ typedef std::vector<Point> PointList;
 typedef std::pair<Point, Vector> PointVectorPair;
 typedef CGAL::Surface_mesh_default_triangulation_3 Tr;
 typedef Tr::Geom_traits GT;
-//typedef CGAL::Cartesian_d<double>              K;
 typedef CGAL::Min_sphere_annulus_d_traits_3<Kernel> Traits;
 typedef CGAL::Min_sphere_d<Traits>             Min_sphere;
-//typedef K::Point_d point_d;
-//typedef FT (*Function)(Point);
-//typedef CGAL::Implicit_surface_3<Kernel, Function> Surface_3_hrbf;
 typedef implicit_function<FT,Point > Hrbf_function;
 typedef CGAL::Implicit_surface_3<Kernel, Hrbf_function> Surface_3_hrbf;
 
@@ -345,29 +341,6 @@ Viewer::display()
 
   shader.disable();
     
-    
-  //
-  /*
-    Quaternion    eye(0., 0., 0.,-2.5*camera.zoom());
-    Quaternion center(0., 0., 0., 0. );
-    Quaternion     up(0., 0., 1., 0. );
-    GLint uniformEye = glGetUniformLocation(shader, "eye");
-    Quaternion r = camera.computeCurrentRotation();
-    eye = r.conjugate() * eye * r;
-    glUniform3f(uniformEye, eye.x, eye.y, eye.z);
-      
-    GLint uniformLight = glGetUniformLocation( shader, "light" );
-    Quaternion light(0., -1., 1., -10.);
-    light = r.conjugate() * light * r;
-    glUniform3f(uniformLight, light.x, light.y, light.z);
-
-    glTranslated(0.0, 0.0, -3.0);
-    glutSolidSphere(1.0, 16, 16);
-    
-    shader.disable();
-  */
-  //
-    
   glutSwapBuffers();
     
 }
@@ -424,15 +397,10 @@ void
 Viewer::drawScene()
 {
   glPushAttrib(GL_ALL_ATTRIB_BITS);
-  //glEnable(GL_POLYGON_OFFSET_FILL);
-  //glPolygonOffset(1., 1.);
-    
-  // drawPolygons();
 
   glDisable(GL_POLYGON_OFFSET_FILL);
   if (renderWireframe) drawWireframe();
   if (renderSelected ) drawSelectedVerts();
-  //drawSelectedVerts();
   glEnable(GL_POLYGON_OFFSET_FILL);
   glPolygonOffset(1., 1.);
     
@@ -524,7 +492,6 @@ Viewer::drawSelectedVerts( )
       glPushMatrix();
       glTranslated(p.x, p.y, p.z);
       glutSolidSphere(h, 10, 10);
-      //selectedVertDeformation(p.x, p.y, p.z);
 
       glPopMatrix();
     }
@@ -598,10 +565,6 @@ Viewer::pickVertex(int x, int y)
   if (index < 0) return;
 
   std::set<unsigned>::iterator it = selectedVert.find(index);
-  /*if (it == selectedVert.end())
-    selectedVert.insert(index);
-    else
-    selectedVert.erase(it);*/
   selectedVert.clear();
   selectedVert.insert(index);
 
@@ -833,69 +796,11 @@ setMeshFromPolyhedron(SurfaceMesh& output_mesh,
   meshPtr->setData(vertices, faces);
 }
 
-//bool compute_surface_mesh_CGAL(/*const*/ Poisson_reconstruction_function& function,
-  //                             /*const*/ PointNormalList& pwn,
-  //                             PointList& vertices,
-   //                            SurfaceMesh& outmesh) {
-    
-    // Options:
- /*   FT sm_angle = 20.0;  // min triangle angle in degrees
-    FT sm_radius = 30.0; // max triangle size w.r.t. point set average spacing
-    FT sm_distance = 0.375; // surface approximation error w.r.t. point set average spacing
-    
-    // Ccompute average spacing
-    FT average_spacing =
-    CGAL::compute_average_spacing(pwn.begin(),
-                                  pwn.end(),6);
-    
-    // Find a bounding sphere for the object, its radius and an
-    // Inner point to the object
-    Point inner_point = function.get_inner_point();
-    Sphere bsphere = function.bounding_sphere();
-    FT radius = std::sqrt(bsphere.squared_radius());
-    
-    // Define the implicit surface
-    FT sm_sphere_radius = 5.0 * radius;
-    // Dichotomy error must be << sm_distance
-    FT sm_dichotomy_error = sm_distance * average_spacing / 1000.0;
-    Surface_3 surface(function,
-                      Sphere(inner_point,sm_sphere_radius*sm_sphere_radius),
-                      sm_dichotomy_error/sm_sphere_radius);
-    
-    // Surface mesh criteria
-    CGAL::Surface_mesh_default_criteria_3<STr> criteria(sm_angle,
-                                                        sm_radius*average_spacing,
-                                                        sm_distance*average_spacing);
-    
-    // Generate surface mesh
-    STr tr; // 3D Delaunay triangulation for surface mesh generation
-    
-    // Add mesh vertices to the triangulation
-    tr.insert(vertices.begin(), vertices.end());
-    
-    C2t3 c2t3(tr); // 2D complex in 3D Delaunay triangulation
 
-    CGAL::make_surface_mesh(c2t3,
-                            surface,
-                            criteria,
-                            CGAL::Manifold_with_boundary_tag());
-           std::cout<<"aaaaa"<<std::endl;
-    if (tr.number_of_vertices() == 0) {
-        return false;
-    }
-    
-    CGAL::output_surface_facets_to_polyhedron(c2t3, outmesh);
-    
-    return true;
-}
-*/
 void
 Viewer::selectedVertDeformation(Vec3& selected_point, 
 				Vec3& selected_normal)
 {
-
-  
-  //std::vector<Vec3> vertNormal, deformationPoints;
   std::vector<PointVectorPair> points;
     PointList vertices;
   std::vector<Vec3> deformationPoints;
@@ -909,7 +814,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   double normal_y = selected_normal.y;
   double normal_z = selected_normal.z;
 
-  //meshPtr->computeVertNormals(vertNormal);
   double distance,thr=0.09,alpha=200.0,disp;
   for(unsigned i=0;i<meshPtr->numVerts();i++){
     Vec3 p_neighbor = meshPtr->getVertPos(i);
@@ -955,22 +859,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
 #ifdef HRBF
   HRBF_fit<double, 3, Rbf_pow3<double> > hrbf;
   hrbf.hermite_fit(points2, normals2);
-  /*
-  for (size_t i = 0; i < mcgrid.structuredGrid.size(); ++i) {
-     mcgrid.results[i] = hrbf.eval(mcgrid.structuredGrid[i]);
-  }
-
-  double *resultarray= new double[mcgrid.results.size()];
-  for(int i=0;i<mcgrid.results.size();i++){
-    resultarray[i] = mcgrid.results[i];
-  }
-    for (std::size_t i = 0; i < points2.size(); ++i) {
-        Point pt(points2[i][0], points2[i][1], points2[i][2]);
-        Vector nm(normals2[i][0], normals2[i][1], normals2[i][2]);
-        Point_with_normal_3 pn(pt, nm);
-        pwn.push_back(pn);
-    }
-   */
     FT averagespacing = CGAL::compute_average_spacing(points.begin(),
                                                       points.end(),
                                                       CGAL::First_of_pair_property_map<PointVectorPair>(),
@@ -981,25 +869,10 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
     }
     Min_sphere  ms (pt.begin(), pt.end());
-    /*
-    for(int i=0;i<mcgrid.structuredGrid.size();i++){
-        pt.push_back(mcgrid.structuredGrid[i](0,0),mcgrid.structuredGrid[i](1,0),mcgrid.structuredGrid[i](2,0))
-    }
-    
-    Hrbf_reconstruction_function function(*func)(mcgrid.structuredGrid[i](0,0),mcgrid.structuredGrid[i](1,0),mcgrid.structuredGrid[i](2,0))
-    
-    Surface_3_double surface();
-    for(int i=0;i<mcgrid.results.size();i++){
-        surface[i]=resultarray[i];
-    */
     Hrbf_function function(hrbf);
     FT sm_angle = 20.0;
     FT sm_radius = 5.0;
     FT sm_distance = 0.15;
-   // Point inner_point = func.get_inner_point();
-    //Sphere bsphere = func.bounding_sphere();
-    //FT radius = std::sqrt(bsphere.squared_radius());
-    
     FT sm_sphere_radius = 5.0 * 5;
     FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
     Surface_3_hrbf surface(function,
@@ -1020,7 +893,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     //SurfaceMesh output_mesh;
     bool f;
     
-    //f=compute_surface_mesh_CGAL(function,pwn,vertices,output_mesh);
     
     setMeshFromPolyhedron(output_mesh, meshPtr);
 #endif   
