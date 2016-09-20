@@ -7,7 +7,7 @@
 #include "hrbf_core.h"
 #include "hrbf_phi_funcs.h"
 #include <CGAL/Implicit_surface_3.h>
- template<typename FT,typename Point>class implicit_function
+ template<typename FT,typename Point>class implicit_function_hrbf
 {
     public:
     typedef HRBF_fit<double, 3, Rbf_pow3<double> > HRBF_fit;
@@ -22,7 +22,7 @@
     
     //_Scalar HRBF_fit<_Scalar, _Dim, Rbf>::(*fpEval)(Vector&)
     //fpEval= _Scalar HRBF_fit<_Scalar,_Dim,Rbf>::eval
-    implicit_function(HRBF_fit h ){
+    implicit_function_hrbf(HRBF_fit h ){
         hrbf=h;
         
     }

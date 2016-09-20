@@ -32,6 +32,7 @@ CMakeFiles/pick.dir/Vectors.cpp.o: Vectors.h
 
 CMakeFiles/pick.dir/Viewer.cpp.o: CIsoSurface.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Camera.h
+CMakeFiles/pick.dir/Viewer.cpp.o: HRBF_closed.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Image.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Quaternion.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Shader.h
@@ -41,7 +42,8 @@ CMakeFiles/pick.dir/Viewer.cpp.o: Viewer.cpp
 CMakeFiles/pick.dir/Viewer.cpp.o: Viewer.h
 CMakeFiles/pick.dir/Viewer.cpp.o: hrbf_core.h
 CMakeFiles/pick.dir/Viewer.cpp.o: hrbf_phi_funcs.h
-CMakeFiles/pick.dir/Viewer.cpp.o: implicit_function.h
+CMakeFiles/pick.dir/Viewer.cpp.o: implicit_function_crbf.h
+CMakeFiles/pick.dir/Viewer.cpp.o: implicit_function_hrbf.h
 CMakeFiles/pick.dir/Viewer.cpp.o: types.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Aff_transformation_2.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Aff_transformation_3.h

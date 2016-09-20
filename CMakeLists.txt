@@ -56,7 +56,7 @@ if ( NOT Boost_FOUND )
   return()  
 
 endif()
-set(LIB_SRC TriMesh.cpp types.cpp Camera.cpp Image.cpp Shader.cpp Viewer.cpp CIsoSurface.cpp Vectors.cpp)
+set(LIB_SRC  TriMesh.cpp types.cpp Camera.cpp Image.cpp Shader.cpp Viewer.cpp CIsoSurface.cpp Vectors.cpp)
 set(SRCS ${LIB_SRC} main.cpp)
 
 

@@ -9,7 +9,9 @@
 #include "hrbf_phi_funcs.h"
 #include "CIsoSurface.h"
 #include "Vectors.h"
-#include "implicit_function.h"
+#include "implicit_function_hrbf.h"
+#include "implicit_function_crbf.h"
+#include "HRBF_closed.h"
 #include <utility>
 #include <fstream>
 
@@ -53,8 +55,8 @@
 
 
 //#define POISSON 1
-#define HRBF 1
-//#define HRBF_CLOSED 1
+//#define HRBF 1
+#define HRBF_CLOSED 1
 
 
 int  Viewer::windowSize[2] = { 800, 800 };
@@ -96,8 +98,10 @@ typedef CGAL::Surface_mesh_default_triangulation_3 Tr;
 typedef Tr::Geom_traits GT;
 typedef CGAL::Min_sphere_annulus_d_traits_3<Kernel> Traits;
 typedef CGAL::Min_sphere_d<Traits>             Min_sphere;
-typedef implicit_function<FT,Point > Hrbf_function;
+typedef implicit_function_hrbf<FT,Point > Hrbf_function;
+typedef implicit_function_crbf<FT,Point> Crbf_function;
 typedef CGAL::Implicit_surface_3<Kernel, Hrbf_function> Surface_3_hrbf;
+typedef CGAL::Implicit_surface_3<Kernel, Crbf_function> Surface_3_crbf;
 
 
 // Precompute and keep the grids used by MC algorithm
@@ -698,56 +702,7 @@ void createOFFFile2(const std::string& outFileName){
   }    
 }
 
-void Wendland_gradphi(Vector3 p, std::vector<Vector3>& centers,
-                      double rho, std::vector<double>& g)
-{
-  for(unsigned int i=0;i<centers.size();i++){
-    g[i*3] = 0.0;
-    g[i*3+1] = 0.0;
-    g[i*3+2] = 0.0;
-        
-    double r=sqrt(pow((p(0)-centers[i](0)),2)+pow((p(1)-centers[i](1)),2)+pow((p(2)-centers[i](2)),2));
 
-    if (r <= rho&&(p(0)!=centers[i](0)||p(1)!=centers[i](1)||p(2)!=centers[i](2))!=0){
-      g[i*3]=-20.0/pow(rho,2)*(p(0)-centers[i](0))*pow((1.0-r/rho),3);
-      g[i*3+1]=-20.0/pow(rho,2)*(p(1)-centers[i](1))*pow((1.0-r/rho),3);
-      g[i*3+2]=-20.0/pow(rho,2)*(p(2)-centers[i](2))*pow((1.0-r/rho),3);
-    }
-  }
-}
-
-
-void evalHRBF_closed(std::vector<Vector3>& pts,
-                     std::vector<Vector3>& normals,
-                     std::vector<Vector3>& centers,
-                     double rho, double eta,
-                     std::vector<double>& d)
-{
-  for(unsigned int k=0;k<pts.size();k++){
-    d.push_back(0);
-  }
-    
-  std::vector<double> g(centers.size()*3);
-    
-  for(unsigned int j=0;j<pts.size();j++){
-    Vector3 x = pts[j];
-
-    Wendland_gradphi(x, centers, rho, g);
-
-    for(unsigned int i=0;i<centers.size();i++){
-      double rho2 = rho*rho;
-      Vector3 nr;
-            
-      nr(0)=rho2/(20.0+eta*rho2)*normals[i](0);
-      nr(1)=rho2/(20.0+eta*rho2)*normals[i](1);
-      nr(2)=rho2/(20.0+eta*rho2)*normals[i](2);
-            
-      double dt=nr(0)*g[i*3]+nr(1)*g[i*3+1]+nr(2)*g[i*3+2];
-            
-      d[j]=d[j]-dt;            
-    }
-  }
-}
 
 
 static void 
@@ -907,24 +862,42 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   rho = rho * 5;
     double eta = 50.0 / (rho*rho);
   std::cout << "eta: " << eta << " ; rho: " << rho << std::endl;
-
+    FT averagespacing = CGAL::compute_average_spacing(points.begin(),
+                                                      points.end(),
+                                                      CGAL::First_of_pair_property_map<PointVectorPair>(),
+                                                      6);
   // Evaluate on the grid
-  evalHRBF_closed(mcgrid.structuredGrid, normals2, points2,
-		  rho, eta, mcgrid.results);
 
-  double *resultarray= new double[mcgrid.results.size()];
-  for(unsigned int i=0;i<mcgrid.results.size();i++){
-    resultarray[i] = mcgrid.results[i];
-  }
-
-  ciso->GenerateSurface(resultarray, 0, 
-			mcgrid.subx-1, mcgrid.suby-1, mcgrid.subz-1, 
-			mcgrid.dx, mcgrid.dy, mcgrid.dz);
-  delete[] resultarray;
-
-  meshPtr->setData(ciso->m_ppt3dVertices, ciso->m_nVertices,
-		   ciso->m_piTriangleIndices, ciso->m_nTriangles);
-  meshPtr->normalize();
+    HRBF_closed crbf(mcgrid.structuredGrid, normals2, points2, rho, eta);
+    PointList pt;
+    for(std::size_t i=0;i<points2.size();i++){
+        pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
+    }
+    Min_sphere  ms (pt.begin(), pt.end());
+    Crbf_function function(crbf);
+    FT sm_angle = 20.0;
+    FT sm_radius = 5.0;
+    FT sm_distance = 0.15;
+    FT sm_sphere_radius = 5.0 * 5;
+    FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
+    Surface_3_crbf surface(function,
+                           Sphere(ms.center(),ms.squared_radius()*1.5));
+    
+    CGAL::Surface_mesh_default_criteria_3<STr>
+    criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+    STr tr;
+    tr.insert(vertices.begin(), vertices.end());
+    C2t3 c2t3(tr);
+    CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
+                            surface,  // implicit surface
+                            criteria, // meshing criteria
+                            CGAL::Manifold_with_boundary_tag());  // require manifold mesh
+    
+    SurfaceMesh output_mesh;
+    CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+    
+    setMeshFromPolyhedron(output_mesh, meshPtr);
+    //SurfaceMesh output_mesh;
 #endif
 
 

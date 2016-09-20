@@ -33,6 +33,7 @@ CMakeFiles/pick.dir/Vectors.cpp.o
 CMakeFiles/pick.dir/Viewer.cpp.o
  /Users/m5201138/src/CIsoSurface.h
  /Users/m5201138/src/Camera.h
+ /Users/m5201138/src/HRBF_closed.h
  /Users/m5201138/src/Image.h
  /Users/m5201138/src/Quaternion.h
  /Users/m5201138/src/Shader.h
@@ -42,7 +43,8 @@ CMakeFiles/pick.dir/Viewer.cpp.o
  /Users/m5201138/src/Viewer.h
  /Users/m5201138/src/hrbf_core.h
  /Users/m5201138/src/hrbf_phi_funcs.h
- /Users/m5201138/src/implicit_function.h
+ /Users/m5201138/src/implicit_function_crbf.h
+ /Users/m5201138/src/implicit_function_hrbf.h
  /Users/m5201138/src/types.h
  /opt/local/include/CGAL/Aff_transformation_2.h
  /opt/local/include/CGAL/Aff_transformation_3.h
