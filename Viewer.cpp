@@ -54,9 +54,8 @@
 #endif
 
 
-//#define POISSON 1
-//#define HRBF 1
-#define HRBF_CLOSED 1
+
+
 
 
 int  Viewer::windowSize[2] = { 800, 800 };
@@ -103,6 +102,15 @@ typedef implicit_function_crbf<FT,Point> Crbf_function;
 typedef CGAL::Implicit_surface_3<Kernel, Hrbf_function> Surface_3_hrbf;
 typedef CGAL::Implicit_surface_3<Kernel, Crbf_function> Surface_3_crbf;
 
+int reconstructionValue;
+double thr;
+double alpha;
+int nb_neighbors;
+int nb_neighbors2;
+FT sm_angle;
+FT sm_radius;
+FT sm_distance;
+FT sm_sphere_radius;
 
 // Precompute and keep the grids used by MC algorithm
 struct MCGrid {
@@ -751,7 +759,59 @@ setMeshFromPolyhedron(SurfaceMesh& output_mesh,
   meshPtr->setData(vertices, faces);
 }
 
-
+void Viewer::read(const char* filename){
+    std::string line;
+    std::ifstream in(filename);
+    while(getline(in, line))
+    {
+        std::stringstream ss(line);
+        std::string token;
+        ss >> token;
+        if (token == "reconstruction(Hrbf=0,closedHrbf=1,Poisson=2)")
+        {
+            ss >> reconstructionValue;
+            
+            continue;
+        }
+        if(token=="threshold")
+        {
+            ss>>thr;
+            continue;
+        }
+        if(token=="alpha"){
+            ss>>alpha;
+            continue;
+        }
+        if(token=="nb_neighbors"){
+            ss>>nb_neighbors;
+            continue;
+        }
+        if(token=="nb_neighbors2"){
+            ss>>nb_neighbors2;
+            continue;
+        }
+        if(token=="sm_angle"){
+            double angle=0;
+            ss>>angle;
+            sm_angle=angle;
+            continue;
+        }
+        if(token=="sm_radius"){
+            double radius=0;
+            ss>>radius;
+            sm_radius=radius;
+            continue;
+        }
+        if(token=="sm_distance"){
+            double distance=0;
+            ss>>distance;
+            sm_distance=distance;
+            continue;
+        }
+    }
+    
+    in.close();
+}
 void
 Viewer::selectedVertDeformation(Vec3& selected_point, 
 				Vec3& selected_normal)
@@ -769,7 +829,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   double normal_y = selected_normal.y;
   double normal_z = selected_normal.z;
 
-  double distance,thr=0.09,alpha=200.0,disp;
+  double distance,/*thr=0.09,alpha=200.0,*/disp;
   for(unsigned i=0;i<meshPtr->numVerts();i++){
     Vec3 p_neighbor = meshPtr->getVertPos(i);
     distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
@@ -787,7 +847,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   }
  
 
-  const int nb_neighbors = 18; // K-nearest neighbors = 3 rings
+  //const int nb_neighbors = 18; // K-nearest neighbors = 3 rings
   CGAL::pca_estimate_normals(points.begin(), points.end(), CGAL::First_of_pair_property_map<PointVectorPair>(), CGAL::Second_of_pair_property_map<PointVectorPair>(), nb_neighbors);
   
   std::vector<PointVectorPair>::iterator unoriented_points_begin =
@@ -810,8 +870,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     normals2.push_back(n_tmp);
   }
 
-
-#ifdef HRBF
+    if(reconstructionValue==0){
   HRBF_fit<double, 3, Rbf_pow3<double> > hrbf;
   hrbf.hermite_fit(points2, normals2);
     FT averagespacing = CGAL::compute_average_spacing(points.begin(),
@@ -828,7 +887,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     FT sm_angle = 20.0;
     FT sm_radius = 5.0;
     FT sm_distance = 0.15;
-    FT sm_sphere_radius = 5.0 * 5;
+    //FT sm_sphere_radius = 5.0 * 5;
     FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
     Surface_3_hrbf surface(function,
                            Sphere(ms.center(),ms.squared_radius()*1.5));
@@ -850,13 +909,13 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     
     
     setMeshFromPolyhedron(output_mesh, meshPtr);
-#endif   
+    }
 
 
-  const unsigned int nb_neighbors2 = 6; // 1 ring
+//  const unsigned int nb_neighbors2 = 6; // 1 ring
 
   
-#ifdef HRBF_CLOSED
+    if(reconstructionValue==1){
   //HRBF_closed
   double rho = CGAL::compute_average_spacing(points.begin(), points.end(),CGAL::First_of_pair_property_map<PointVectorPair>(),nb_neighbors2);
   rho = rho * 5;
@@ -878,7 +937,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     FT sm_angle = 20.0;
     FT sm_radius = 5.0;
     FT sm_distance = 0.15;
-    FT sm_sphere_radius = 5.0 * 5;
+    //FT sm_sphere_radius = 5.0 * 5;
     FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
     Surface_3_crbf surface(function,
                            Sphere(ms.center(),ms.squared_radius()*1.5));
@@ -898,10 +957,10 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     
     setMeshFromPolyhedron(output_mesh, meshPtr);
     //SurfaceMesh output_mesh;
-#endif
+    }
 
 
-#ifdef POISSON     
+    if(reconstructionValue==2){
   // Poisson reconstruction
     
   for (std::size_t i = 0; i < points2.size(); ++i) {
@@ -958,8 +1017,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
 
   setMeshFromPolyhedron(output_mesh, meshPtr);
   //meshPtr->normalize();
-#endif
-
+    }
 
   std::cout<<"drawed"<<std::endl;
 }

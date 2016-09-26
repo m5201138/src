@@ -60,7 +60,7 @@ public:
    static void pickCenter();
     //added
     static void selectedVertDeformation(Vec3& selected_point,Vec3& selected_normal);
-   // void createGrid(const Vector3& leftCorner,const Vector3& rightCorner,unsigned int nx, unsigned int ny, unsigned int nz,std::vector<Vector3>& grid)
+    static void read(const char*);
 };
 
 #endif // VIEWER_H

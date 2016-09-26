@@ -50,6 +50,7 @@ int main(int argc, char** argv)
     mesh->normalize();
         
     Viewer viewer;
+    viewer.read("config.txt");
     viewer.meshPtr = mesh;
     viewer.verbose = verbose;
     viewer.clearData();
