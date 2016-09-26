@@ -3,6 +3,6 @@ threshold 0.9
 alpha 200.0
 nb_neighbors 18
 nb_neighbors2 6
-sm_angle = 20.0
-sm_radius = 5.0
-sm_distance = 0.15
+sm_angle 20.0
+sm_radius 5.0
+sm_distance 0.15

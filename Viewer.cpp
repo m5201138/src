@@ -829,7 +829,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   double normal_y = selected_normal.y;
   double normal_z = selected_normal.z;
 
-  double distance,/*thr=0.09,alpha=200.0,*/disp;
+  double distance,disp;
   for(unsigned i=0;i<meshPtr->numVerts();i++){
     Vec3 p_neighbor = meshPtr->getVertPos(i);
     distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
@@ -847,7 +847,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
   }
  
 
-  //const int nb_neighbors = 18; // K-nearest neighbors = 3 rings
   CGAL::pca_estimate_normals(points.begin(), points.end(), CGAL::First_of_pair_property_map<PointVectorPair>(), CGAL::Second_of_pair_property_map<PointVectorPair>(), nb_neighbors);
   
   std::vector<PointVectorPair>::iterator unoriented_points_begin =
@@ -884,10 +883,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     }
     Min_sphere  ms (pt.begin(), pt.end());
     Hrbf_function function(hrbf);
-    FT sm_angle = 20.0;
-    FT sm_radius = 5.0;
-    FT sm_distance = 0.15;
-    //FT sm_sphere_radius = 5.0 * 5;
+
     FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
     Surface_3_hrbf surface(function,
                            Sphere(ms.center(),ms.squared_radius()*1.5));
@@ -911,9 +907,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     setMeshFromPolyhedron(output_mesh, meshPtr);
     }
 
-
-//  const unsigned int nb_neighbors2 = 6; // 1 ring
-
   
     if(reconstructionValue==1){
   //HRBF_closed
@@ -934,10 +927,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     }
     Min_sphere  ms (pt.begin(), pt.end());
     Crbf_function function(crbf);
-    FT sm_angle = 20.0;
-    FT sm_radius = 5.0;
-    FT sm_distance = 0.15;
-    //FT sm_sphere_radius = 5.0 * 5;
     FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
     Surface_3_crbf surface(function,
                            Sphere(ms.center(),ms.squared_radius()*1.5));
@@ -974,11 +963,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     points.end(),
     CGAL::First_of_pair_property_map<PointVectorPair>(),
     6);
-
-  FT sm_angle = 20.0;
-  FT sm_radius = 5.0;
-  FT sm_distance = 0.15;
-    
   Poisson_reconstruction_function
     function(pwn.begin(), pwn.end(),
 	     CGAL::make_normal_of_point_with_normal_pmap(PointList::value_type()));
