@@ -455,6 +455,7 @@ CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Triangulation_structur
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Triangulation_utils_2.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Triangulation_utils_3.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Triangulation_vertex_base_3.h
+CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Triangulation_vertex_base_with_info_3.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Uncertain.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Union_find.h
 CMakeFiles/pick.dir/Viewer.cpp.o: /opt/local/include/CGAL/Unique_hash_map.h

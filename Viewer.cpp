@@ -32,7 +32,10 @@
 #include <CGAL/Min_sphere_d.h>
 #include <CGAL/Min_sphere_annulus_d_traits_3.h>
 #include <CGAL/Min_sphere_d.h>
-
+#include <CGAL/Delaunay_triangulation_3.h>
+#include <CGAL/Triangulation_vertex_base_with_info_3.h>
+#include <CGAL/Triangulation_data_structure_3.h>
+#include <CGAL/Tetrahedron_3.h>
 
 #include <cstdlib>
 #include <iostream>
@@ -101,7 +104,18 @@ typedef implicit_function_hrbf<FT,Point > Hrbf_function;
 typedef implicit_function_crbf<FT,Point> Crbf_function;
 typedef CGAL::Implicit_surface_3<Kernel, Hrbf_function> Surface_3_hrbf;
 typedef CGAL::Implicit_surface_3<Kernel, Crbf_function> Surface_3_crbf;
+typedef CGAL::Triangulation_vertex_base_with_info_3<Point ,Kernel> Vb;
+typedef CGAL::Triangulation_data_structure_3<Vb> Tds;
+typedef CGAL::Delaunay_triangulation_3<Kernel,Tds> Delaunay;
+typedef Delaunay::Finite_cells_iterator Finite_cells_iterator;
+typedef CGAL::Tetrahedron_3<Kernel> Tetrahedron_3;
 
+//typedef CGAL::Surface_mesh_complex_2_in_triangulation_3<> C2t3_d;
+
+typedef Delaunay::Cell_handle    Cell_handle;
+typedef Delaunay::Vertex_handle  Vertex_handle;
+typedef Delaunay::Locate_type    Locate_type;
+typedef Delaunay::Finite_cells_iterator Finite_cells_iterator;
 int reconstructionValue;
 double thr;
 double alpha;
@@ -890,9 +904,23 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
 
     CGAL::Surface_mesh_default_criteria_3<STr>
     criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
-    STr tr;
-    tr.insert(vertices.begin(), vertices.end());
-    C2t3 c2t3(tr);
+        Delaunay dl;
+        STr tr;
+
+        for (std::size_t i = 0; i < points2.size(); ++i) {
+            dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+        }
+        Finite_cells_iterator cit=dl.finite_cells_begin();
+        for(cit=dl.finite_cells_begin();cit!=dl.finite_cells_end();cit++){
+            Tetrahedron_3 tetra(cit->vertex(0)->point(),cit->vertex(1)->point(),cit->vertex(2)->point(),cit->vertex(3)->point());
+            if(function(CGAL::centroid(tetra))<0){
+                tr.insert(cit->vertex(0)->point());
+                tr.insert(cit->vertex(1)->point());
+                tr.insert(cit->vertex(2)->point());
+                tr.insert(cit->vertex(3)->point());
+            }
+        }
+        C2t3 c2t3(tr);
     CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
                             surface,  // implicit surface
                             criteria, // meshing criteria
@@ -933,19 +961,32 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     
     CGAL::Surface_mesh_default_criteria_3<STr>
     criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+    Delaunay dl;
     STr tr;
-    tr.insert(vertices.begin(), vertices.end());
-    C2t3 c2t3(tr);
+
+        for (std::size_t i = 0; i < points2.size(); ++i) {
+            dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+        }
+        Finite_cells_iterator cit=dl.finite_cells_begin();
+        for(cit=dl.finite_cells_begin();cit!=dl.finite_cells_end();cit++){
+            Tetrahedron_3 tetra(cit->vertex(0)->point(),cit->vertex(1)->point(),cit->vertex(2)->point(),cit->vertex(3)->point());
+            if(function(CGAL::centroid(tetra))<0){
+                tr.insert(cit->vertex(0)->point());
+                tr.insert(cit->vertex(1)->point());
+                tr.insert(cit->vertex(2)->point());
+                tr.insert(cit->vertex(3)->point());
+            }
+        }
+        C2t3 c2t3(tr);
     CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
                             surface,  // implicit surface
                             criteria, // meshing criteria
-                            CGAL::Manifold_with_boundary_tag());  // require manifold mesh
+                            CGAL::Manifold_with_boundary_tag());  // require manifold mesh*/
     
     SurfaceMesh output_mesh;
     CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
     
     setMeshFromPolyhedron(output_mesh, meshPtr);
-    //SurfaceMesh output_mesh;
     }
 
 
@@ -982,11 +1023,24 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
  
   CGAL::Surface_mesh_default_criteria_3<STr>
     criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
-     
-  STr tr;
-  tr.insert(vertices.begin(), vertices.end());
-  C2t3 c2t3(tr);
-  std::cout<<pwn.size()<<std::endl;
+        Delaunay dl;
+        STr tr;
+        for (std::size_t i = 0; i < points2.size(); ++i) {
+            dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+        }
+        Finite_cells_iterator cit=dl.finite_cells_begin();
+        for(cit=dl.finite_cells_begin();cit!=dl.finite_cells_end();cit++){
+            Tetrahedron_3 tetra(cit->vertex(0)->point(),cit->vertex(1)->point(),cit->vertex(2)->point(),cit->vertex(3)->point());
+            if(function(CGAL::centroid(tetra))<0){
+                tr.insert(cit->vertex(0)->point());
+                tr.insert(cit->vertex(1)->point());
+                tr.insert(cit->vertex(2)->point());
+                tr.insert(cit->vertex(3)->point());
+            }
+        }
+        C2t3 c2t3(tr);
+
+
   CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
 			  surface,  // implicit surface
 			  criteria, // meshing criteria

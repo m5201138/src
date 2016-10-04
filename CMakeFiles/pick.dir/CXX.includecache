@@ -203,6 +203,14 @@ CGAL/Min_sphere_annulus_d_traits_3.h
 -
 CGAL/Min_sphere_d.h
 -
+CGAL/Delaunay_triangulation_3.h
+-
+CGAL/Triangulation_vertex_base_with_info_3.h
+-
+CGAL/Triangulation_data_structure_3.h
+-
+CGAL/Tetrahedron_3.h
+-
 cstdlib
 -
 iostream
@@ -4616,6 +4624,10 @@ CGAL/Triangulation_utils_2.h
 CGAL/basic.h
 -
 CGAL/Triangulation_ds_vertex_base_3.h
+-
+
+/opt/local/include/CGAL/Triangulation_vertex_base_with_info_3.h
+CGAL/Triangulation_vertex_base_3.h
 -
 
 /opt/local/include/CGAL/Uncertain.h
