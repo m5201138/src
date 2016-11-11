@@ -30,6 +30,7 @@ CMakeFiles/pick.dir/TriMesh.cpp.o: types.h
 CMakeFiles/pick.dir/Vectors.cpp.o: Vectors.cpp
 CMakeFiles/pick.dir/Vectors.cpp.o: Vectors.h
 
+CMakeFiles/pick.dir/Viewer.cpp.o: Build_surface.h
 CMakeFiles/pick.dir/Viewer.cpp.o: CIsoSurface.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Camera.h
 CMakeFiles/pick.dir/Viewer.cpp.o: HRBF_closed.h

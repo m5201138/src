@@ -6,6 +6,26 @@
 
 #IncludeRegexTransform: 
 
+/Users/m5201138/src/Build_surface.h
+CGAL/Polyhedron_incremental_builder_3.h
+-
+CGAL/Polyhedron_3.h
+-
+CGAL/Exact_predicates_inexact_constructions_kernel.h
+-
+CGAL/Delaunay_triangulation_3.h
+-
+CGAL/Triangulation_vertex_base_with_info_3.h
+-
+CGAL/Triangulation_data_structure_3.h
+-
+map
+-
+algorithm
+-
+iterator
+-
+
 /Users/m5201138/src/CIsoSurface.cpp
 stdio.h
 -
@@ -149,6 +169,8 @@ CGAL/mst_orient_normals.h
 -
 CGAL/property_map.h
 -
+map
+-
 eigen/Eigen/Core
 -
 hrbf_core.h
@@ -165,6 +187,8 @@ implicit_function_crbf.h
 /Users/m5201138/src/implicit_function_crbf.h
 HRBF_closed.h
 /Users/m5201138/src/HRBF_closed.h
+Build_surface.h
+/Users/m5201138/src/Build_surface.h
 utility
 -
 fstream
@@ -210,6 +234,8 @@ CGAL/Triangulation_vertex_base_with_info_3.h
 CGAL/Triangulation_data_structure_3.h
 -
 CGAL/Tetrahedron_3.h
+-
+CGAL/Polyhedron_incremental_builder_3.h
 -
 cstdlib
 -
