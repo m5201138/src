@@ -1,4 +1,4 @@
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+//#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/pca_estimate_normals.h>
 #include <CGAL/mst_orient_normals.h>
 #include <CGAL/property_map.h>
@@ -16,6 +16,7 @@
 #include <utility>
 #include <fstream>
 
+#include <CGAL/Cartesian.h>
 #include <CGAL/compute_average_spacing.h>
 #include <CGAL/Poisson_reconstruction_function.h>
 #include <CGAL/make_surface_mesh.h>
@@ -82,6 +83,7 @@ Camera Viewer::camera;
 
 //added
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+//typedef CGAL::Cartesian<double> Kernel;
 typedef Kernel::Point_3 Point;
 typedef Kernel::Vector_3 Vector;
 typedef Eigen::Matrix<double,3,1> Vector3;
@@ -111,6 +113,7 @@ typedef CGAL::Triangulation_data_structure_3<Vb> Tds;
 typedef CGAL::Delaunay_triangulation_3<Kernel,Tds> Delaunay;
 typedef Delaunay::Finite_cells_iterator Finite_cells_iterator;
 typedef Delaunay::Finite_facets_iterator Finite_facets_iterator;
+typedef Delaunay::All_facets_iterator All_facets_iterator;
 typedef CGAL::Tetrahedron_3<Kernel> Tetrahedron_3;
 typedef Tds::Facet Facet;
 typedef Tds::Cell Cell;
@@ -732,6 +735,28 @@ void createOFFFile2(const std::string& outFileName){
     }
 }
 
+void createOBJFile(const std::string& outFileName, SurfaceMesh& output_mesh){
+    typedef typename SurfaceMesh::Vertex_const_iterator VCI;
+    typedef typename SurfaceMesh::Facet_const_iterator FCI;
+    typedef typename SurfaceMesh::Halfedge_around_facet_const_circulator HFCC;
+    std::ofstream out(outFileName.c_str());
+    for (VCI vi = output_mesh.vertices_begin();vi != output_mesh.vertices_end();++vi){
+        out<<"v "<<CGAL::to_double(vi->point().x())<<" "<<CGAL::to_double(vi->point().y())<<" "<<CGAL::to_double(vi->point().z())<<std::endl;
+    }
+    typedef CGAL::Inverse_index<VCI> Index;
+    Index index(output_mesh.vertices_begin(), output_mesh.vertices_end());
+    for (FCI fi = output_mesh.facets_begin();fi != output_mesh.facets_end();++fi){
+        HFCC hc = fi->facet_begin();
+        HFCC hc_end = hc;
+        out<<"f";
+        do {
+            out<<" ";
+            out<<index[VCI(hc->vertex())];
+            ++hc;
+        } while(hc != hc_end);
+        out<<std::endl;
+    }
+}
 
 
 
@@ -769,8 +794,9 @@ setMeshFromPolyhedron(SurfaceMesh& output_mesh,
         do {
             f.push_back(index[VCI(hc->vertex())]);
             ++hc;
+            std::cout<<index[VCI(hc->vertex())]<<std::endl;
         } while(hc != hc_end);
-        
+
         faces.push_back(f);
     }
     std::cout << "# of vertices and faces: " << std::endl;
@@ -841,6 +867,43 @@ bool cell_inside(Cell_handle cell,Hrbf_function function,Delaunay dl){
     return f < -1.0e-5;
 }
 bool identification_facet(Facet facet,Hrbf_function function,Delaunay dl){
+    Cell_handle cell_handle = facet.first;
+    int vertex_index = facet.second;
+    Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
+    std::cout << "-----" << std::endl;
+    if (dl.is_infinite(facet)) std::cout << "infinite face" << std::endl;
+    bool is_cell_in = cell_inside(cell_handle,function,dl);
+    bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
+    std::cout << "-----" << std::endl;
+    if (is_cell_in && is_opposite_cell_in) return false;
+    if (!is_cell_in && !is_opposite_cell_in) return false;
+    return true;
+}
+bool cell_inside(Cell_handle cell,Crbf_function function,Delaunay dl){
+    // if (dl.is_infinite(cell))return false;
+    Tetrahedron_3 tet = dl.tetrahedron(cell);
+    Point centroid = CGAL::centroid(tet);
+    double f = function(centroid);
+    return f < -1.0e-5;
+}
+bool identification_facet(Facet facet,Crbf_function function,Delaunay dl){
+    Cell_handle cell_handle = facet.first;
+    int vertex_index = facet.second;
+    Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
+    bool is_cell_in = cell_inside(cell_handle,function,dl);
+    bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
+    if (is_cell_in && is_opposite_cell_in) return false;
+    if (!is_cell_in && !is_opposite_cell_in) return false;
+    return true;
+}
+bool cell_inside(Cell_handle cell,Poisson_reconstruction_function function,Delaunay dl){
+    // if (dl.is_infinite(cell))return false;
+    Tetrahedron_3 tet = dl.tetrahedron(cell);
+    Point centroid = CGAL::centroid(tet);
+    double f = function(centroid);
+    return f < -1.0e-5;
+}
+bool identification_facet(Facet facet,Poisson_reconstruction_function function,Delaunay dl){
     Cell_handle cell_handle = facet.first;
     int vertex_index = facet.second;
     Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
@@ -962,12 +1025,13 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
             polyhedron.addVertex((Point)vit->point());
         }
-        Finite_facets_iterator fit;
+        All_facets_iterator fit;
         std::vector<int> indices;
-        std::set<int> st;
-        for(fit=dl.finite_facets_begin();fit!=dl.finite_facets_end();fit++){
+        std::set<std::vector<int> > st;
+        
+        for(fit=dl.all_facets_begin();fit!=dl.all_facets_end();fit++){
             
-            if(identification_facet(*fit,function,dl)){
+           //if(identification_facet(*fit,function,dl)){
                 Cell_handle cell_handle = fit->first;
                 int vert_index = fit->second;
                 int vert_indices[3];
@@ -982,20 +1046,24 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
                 }
                 auto itr=mp.find(fit->first->vertex(vert_indices[0]));
                 if( itr != mp.end() ) {
-                    st.insert(itr->second);
+                    indices.push_back(itr->second);
                 }
                 itr=mp.find(fit->first->vertex(vert_indices[1]));
                 if( itr != mp.end() ) {
-                    st.insert(itr->second);
+                    indices.push_back(itr->second);
                 }
                 itr=mp.find(fit->first->vertex(vert_indices[2]));
                 if( itr != mp.end() ) {
-                    st.insert(itr->second);
+                    indices.push_back(itr->second);
                 }
-            }
+                st.insert(indices);
+                indices.erase(indices.begin(),indices.end());
+            //}
         }
+        
         polyhedron.addFace(st);
         output_mesh.delegate(polyhedron);
+        createOBJFile("sphere_hrbf.obj",output_mesh);
         setMeshFromPolyhedron(output_mesh, meshPtr);
         
     }
@@ -1027,29 +1095,63 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         CGAL::Surface_mesh_default_criteria_3<STr>
         criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
         Delaunay dl;
-        STr tr;
-        
+        SurfaceMesh output_mesh;
         for (std::size_t i = 0; i < points2.size(); ++i) {
             dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
         }
-        Finite_cells_iterator cit=dl.finite_cells_begin();
-        for(cit=dl.finite_cells_begin();cit!=dl.finite_cells_end();cit++){
-            Tetrahedron_3 tetra(cit->vertex(0)->point(),cit->vertex(1)->point(),cit->vertex(2)->point(),cit->vertex(3)->point());
-            if(function(CGAL::centroid(tetra))<0){
-                tr.insert(cit->vertex(0)->point());
-                tr.insert(cit->vertex(1)->point());
-                tr.insert(cit->vertex(2)->point());
-                tr.insert(cit->vertex(3)->point());
+        std::map<Vertex_handle,int> mp;
+        Delaunay::Finite_vertices_iterator vit;
+        int i=0;
+        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
+            mp.insert(std::map<Vertex_handle,int>::value_type(vit,(int)i));
+            ++i;
+        }
+        
+        Build_surface<HalfedgeDS> polyhedron;
+        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
+            polyhedron.addVertex((Point)vit->point());
+        }
+        All_facets_iterator fit;
+        std::vector<int> indices;
+        std::set<std::vector<int> > st;
+        
+        for(fit=dl.all_facets_begin();fit!=dl.all_facets_end();fit++){
+            if (dl.is_infinite(*fit)) {
+                std::cout << "infinite facet" << std::endl;
+            }
+            if(identification_facet(*fit,function,dl)){
+                Cell_handle cell_handle = fit->first;
+                int vert_index = fit->second;
+                int vert_indices[3];
+                if (cell_inside(cell_handle,function,dl)) {
+                    for (int i = 0; i < 3; ++i) {
+                        vert_indices[i] = cw_order(vert_index, i);
+                    }
+                } else {
+                    for (int i = 0; i < 3; ++i) {
+                        vert_indices[i] = ccw_order(vert_index, i);
+                    }
+                }
+                auto itr=mp.find(fit->first->vertex(vert_indices[0]));
+                if( itr != mp.end() ) {
+                    indices.push_back(itr->second);
+                }
+                itr=mp.find(fit->first->vertex(vert_indices[1]));
+                if( itr != mp.end() ) {
+                    indices.push_back(itr->second);
+                }
+                itr=mp.find(fit->first->vertex(vert_indices[2]));
+                if( itr != mp.end() ) {
+                    indices.push_back(itr->second);
+                }
+                st.insert(indices);
+                indices.erase(indices.begin(),indices.end());
             }
         }
-        C2t3 c2t3(tr);
-        CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
-                                surface,  // implicit surface
-                                criteria, // meshing criteria
-                                CGAL::Manifold_with_boundary_tag());  // require manifold mesh*/
         
-        SurfaceMesh output_mesh;
-        CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+        polyhedron.addFace(st);
+        output_mesh.delegate(polyhedron);
+        createOBJFile("sphere_hrbfClosed.obj",output_mesh);
         
         setMeshFromPolyhedron(output_mesh, meshPtr);
     }
@@ -1089,34 +1191,61 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         CGAL::Surface_mesh_default_criteria_3<STr>
         criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
         Delaunay dl;
-        STr tr;
+        SurfaceMesh output_mesh;
         for (std::size_t i = 0; i < points2.size(); ++i) {
             dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
         }
-        Finite_cells_iterator cit=dl.finite_cells_begin();
-        for(cit=dl.finite_cells_begin();cit!=dl.finite_cells_end();cit++){
-            Tetrahedron_3 tetra(cit->vertex(0)->point(),cit->vertex(1)->point(),cit->vertex(2)->point(),cit->vertex(3)->point());
-            if(function(CGAL::centroid(tetra))<0){
-                tr.insert(cit->vertex(0)->point());
-                tr.insert(cit->vertex(1)->point());
-                tr.insert(cit->vertex(2)->point());
-                tr.insert(cit->vertex(3)->point());
+        std::map<Vertex_handle,int> mp;
+        Delaunay::Finite_vertices_iterator vit;
+        int i=0;
+        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
+            mp.insert(std::map<Vertex_handle,int>::value_type(vit,(int)i));
+            ++i;
+        }
+        
+        Build_surface<HalfedgeDS> polyhedron;
+        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
+            polyhedron.addVertex((Point)vit->point());
+        }
+        Finite_facets_iterator fit;
+        std::vector<int> indices;
+        std::set<std::vector<int> > st;
+        
+        for(fit=dl.finite_facets_begin();fit!=dl.finite_facets_end();fit++){
+            
+            if(identification_facet(*fit,function,dl)){
+                Cell_handle cell_handle = fit->first;
+                int vert_index = fit->second;
+                int vert_indices[3];
+                if (cell_inside(cell_handle,function,dl)) {
+                    for (int i = 0; i < 3; ++i) {
+                        vert_indices[i] = cw_order(vert_index, i);
+                    }
+                } else {
+                    for (int i = 0; i < 3; ++i) {
+                        vert_indices[i] = ccw_order(vert_index, i);
+                    }
+                }
+                auto itr=mp.find(fit->first->vertex(vert_indices[0]));
+                if( itr != mp.end() ) {
+                    indices.push_back(itr->second);
+                }
+                itr=mp.find(fit->first->vertex(vert_indices[1]));
+                if( itr != mp.end() ) {
+                    indices.push_back(itr->second);
+                }
+                itr=mp.find(fit->first->vertex(vert_indices[2]));
+                if( itr != mp.end() ) {
+                    indices.push_back(itr->second);
+                }
+                st.insert(indices);
+                indices.erase(indices.begin(),indices.end());
             }
         }
-        C2t3 c2t3(tr);
         
-        
-        CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
-                                surface,  // implicit surface
-                                criteria, // meshing criteria
-                                CGAL::Manifold_with_boundary_tag());  // require manifold mesh
-        
-        SurfaceMesh output_mesh;
-        CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
-        //SurfaceMesh output_mesh;
-        bool f;
-        
-        //f=compute_surface_mesh_CGAL(function,pwn,vertices,output_mesh);
+        polyhedron.addFace(st);
+        output_mesh.delegate(polyhedron);
+        createOBJFile("sphere_poisson.obj",output_mesh);
         
         setMeshFromPolyhedron(output_mesh, meshPtr);
         //meshPtr->normalize();

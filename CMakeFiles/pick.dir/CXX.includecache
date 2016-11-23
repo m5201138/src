@@ -161,8 +161,6 @@ stdio.h
 /Users/m5201138/src/Vectors.h
 
 /Users/m5201138/src/Viewer.cpp
-CGAL/Exact_predicates_inexact_constructions_kernel.h
--
 CGAL/pca_estimate_normals.h
 -
 CGAL/mst_orient_normals.h
@@ -192,6 +190,8 @@ Build_surface.h
 utility
 -
 fstream
+-
+CGAL/Cartesian.h
 -
 CGAL/compute_average_spacing.h
 -
@@ -424,6 +424,16 @@ CGAL/basic.h
 CGAL/function_objects.h
 -
 map
+-
+
+/opt/local/include/CGAL/Cartesian.h
+CGAL/Cartesian/Cartesian_base.h
+-
+CGAL/Handle_for.h
+-
+CGAL/Kernel/Type_equality_wrapper.h
+-
+CGAL/Kernel/interface_macros.h
 -
 
 /opt/local/include/CGAL/Cartesian/Aff_transformation_2.h

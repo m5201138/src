@@ -23,31 +23,38 @@ public:
         point.push_back(p);
         
     }
-    void addFace(std::set<int> s){
+    void addFace(std::set<std::vector<int> > s){
         st=s;
         //copy(s.begin(), s.end(), back_inserter(face) );
     }
     void operator()( HDS& hds) {
         // Postcondition: hds is a valid polyhedral surface.
         CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
-        B.begin_surface( point.size(), st.size(), point.size()*2);
+        std::cout << point.size() << std::endl;
+        std::cout << st.size() << std::endl;
+        
+        B.begin_surface( point.size(), st.size());
         typedef typename HDS::Vertex   Vertex;
         typedef typename Vertex::Point Point;
-        for(int i= 0; i<point.size()/3; ++i) {
+       /* for(int i= 0; i<point.size()/3; ++i) {
             B.add_vertex(point[i*3]);
             B.add_vertex(point[i*3+1]);
             B.add_vertex(point[i*3+2]);
+        }*/
+        for(int i= 0; i<point.size(); ++i) {
+            std::cout << "adding: " << point[i] << std::endl;
+            B.add_vertex(point[i]);
         }
-        for(auto itr=st.begin(); itr!=st.end(); ++itr){
-            B.begin_facet();
-            B.add_vertex_to_facet(*itr);
-            itr++;
-            if(itr==st.end())break;
-            B.add_vertex_to_facet(*itr);
-            itr++;
-            if(itr==st.end())break;
-            B.add_vertex_to_facet(*itr);
-            B.end_facet();
+        int i=0;
+        std::set< std::vector<int> >::iterator itr;
+
+        for(itr=st.begin(); itr!=st.end(); ++itr){
+            std::cout << i << std::endl;
+            i++;
+            
+            if (B.test_facet(itr->begin(), itr->end())) {
+                B.add_facet(itr->begin(), itr->end());
+            }
         }
         B.end_surface();
         
@@ -56,5 +63,5 @@ private:
     std::vector<Point> point;
     std::vector<int> face;
     std::map<Point, int> mp;
-    std::set<int> st;
+    std::set<std::vector<int> > st;
 };
