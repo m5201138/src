@@ -33,10 +33,12 @@ CMakeFiles/pick.dir/Vectors.cpp.o: Vectors.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Build_surface.h
 CMakeFiles/pick.dir/Viewer.cpp.o: CIsoSurface.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Camera.h
+CMakeFiles/pick.dir/Viewer.cpp.o: Cell_inside.h
 CMakeFiles/pick.dir/Viewer.cpp.o: HRBF_closed.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Image.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Quaternion.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Shader.h
+CMakeFiles/pick.dir/Viewer.cpp.o: Surface_builder.h
 CMakeFiles/pick.dir/Viewer.cpp.o: TriMesh.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Vectors.h
 CMakeFiles/pick.dir/Viewer.cpp.o: Viewer.cpp

@@ -10,9 +10,9 @@
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef Kernel::Point_3 Point;
 typedef Kernel::FT FT;
-typedef CGAL::Triangulation_vertex_base_with_info_3<Point ,Kernel> Vb;
-typedef CGAL::Triangulation_data_structure_3<Vb> Tds;
-typedef CGAL::Delaunay_triangulation_3<Kernel,Tds> Delaunay;
+//typedef CGAL::Triangulation_vertex_base_with_info_3<Point ,Kernel> Vb;
+//typedef CGAL::Triangulation_data_structure_3<Vb> Tds;
+typedef CGAL::Delaunay_triangulation_3<Kernel> Delaunay;
 typedef Delaunay::Vertex_handle    Vertex_handle;
 template <class HDS>
 class Build_surface : public CGAL::Modifier_base<HDS> {
@@ -34,13 +34,6 @@ public:
         std::cout << st.size() << std::endl;
         
         B.begin_surface( point.size(), st.size());
-        typedef typename HDS::Vertex   Vertex;
-        typedef typename Vertex::Point Point;
-       /* for(int i= 0; i<point.size()/3; ++i) {
-            B.add_vertex(point[i*3]);
-            B.add_vertex(point[i*3+1]);
-            B.add_vertex(point[i*3+2]);
-        }*/
         for(int i= 0; i<point.size(); ++i) {
             std::cout << "adding: " << point[i] << std::endl;
             B.add_vertex(point[i]);

@@ -13,6 +13,8 @@
 #include "implicit_function_crbf.h"
 #include "HRBF_closed.h"
 #include "Build_surface.h"
+#include "Cell_inside.h"
+#include "Surface_builder.h"
 #include <utility>
 #include <fstream>
 
@@ -108,15 +110,11 @@ typedef implicit_function_hrbf<FT,Point > Hrbf_function;
 typedef implicit_function_crbf<FT,Point> Crbf_function;
 typedef CGAL::Implicit_surface_3<Kernel, Hrbf_function> Surface_3_hrbf;
 typedef CGAL::Implicit_surface_3<Kernel, Crbf_function> Surface_3_crbf;
-typedef CGAL::Triangulation_vertex_base_with_info_3<Point ,Kernel> Vb;
-typedef CGAL::Triangulation_data_structure_3<Vb> Tds;
-typedef CGAL::Delaunay_triangulation_3<Kernel,Tds> Delaunay;
+typedef CGAL::Delaunay_triangulation_3<Kernel> Delaunay;
 typedef Delaunay::Finite_cells_iterator Finite_cells_iterator;
 typedef Delaunay::Finite_facets_iterator Finite_facets_iterator;
 typedef Delaunay::All_facets_iterator All_facets_iterator;
 typedef CGAL::Tetrahedron_3<Kernel> Tetrahedron_3;
-typedef Tds::Facet Facet;
-typedef Tds::Cell Cell;
 typedef SurfaceMesh::HalfedgeDS             HalfedgeDS;
 
 
@@ -796,7 +794,7 @@ setMeshFromPolyhedron(SurfaceMesh& output_mesh,
             ++hc;
             std::cout<<index[VCI(hc->vertex())]<<std::endl;
         } while(hc != hc_end);
-
+        
         faces.push_back(f);
     }
     std::cout << "# of vertices and faces: " << std::endl;
@@ -864,74 +862,75 @@ bool cell_inside(Cell_handle cell,Hrbf_function function,Delaunay dl){
     Tetrahedron_3 tet = dl.tetrahedron(cell);
     Point centroid = CGAL::centroid(tet);
     double f = function(centroid);
+    std::cout<<f<<std::endl;
     return f < -1.0e-5;
 }
-bool identification_facet(Facet facet,Hrbf_function function,Delaunay dl){
-    Cell_handle cell_handle = facet.first;
-    int vertex_index = facet.second;
-    Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
-    std::cout << "-----" << std::endl;
-    if (dl.is_infinite(facet)) std::cout << "infinite face" << std::endl;
-    bool is_cell_in = cell_inside(cell_handle,function,dl);
-    bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
-    std::cout << "-----" << std::endl;
-    if (is_cell_in && is_opposite_cell_in) return false;
-    if (!is_cell_in && !is_opposite_cell_in) return false;
-    return true;
-}
-bool cell_inside(Cell_handle cell,Crbf_function function,Delaunay dl){
-    // if (dl.is_infinite(cell))return false;
-    Tetrahedron_3 tet = dl.tetrahedron(cell);
-    Point centroid = CGAL::centroid(tet);
-    double f = function(centroid);
-    return f < -1.0e-5;
-}
-bool identification_facet(Facet facet,Crbf_function function,Delaunay dl){
-    Cell_handle cell_handle = facet.first;
-    int vertex_index = facet.second;
-    Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
-    bool is_cell_in = cell_inside(cell_handle,function,dl);
-    bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
-    if (is_cell_in && is_opposite_cell_in) return false;
-    if (!is_cell_in && !is_opposite_cell_in) return false;
-    return true;
-}
-bool cell_inside(Cell_handle cell,Poisson_reconstruction_function function,Delaunay dl){
-    // if (dl.is_infinite(cell))return false;
-    Tetrahedron_3 tet = dl.tetrahedron(cell);
-    Point centroid = CGAL::centroid(tet);
-    double f = function(centroid);
-    return f < -1.0e-5;
-}
-bool identification_facet(Facet facet,Poisson_reconstruction_function function,Delaunay dl){
-    Cell_handle cell_handle = facet.first;
-    int vertex_index = facet.second;
-    Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
-    bool is_cell_in = cell_inside(cell_handle,function,dl);
-    bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
-    if (is_cell_in && is_opposite_cell_in) return false;
-    if (!is_cell_in && !is_opposite_cell_in) return false;
-    return true;
-}
-int ccw_order(int vert, int position) {
-    int ccw[4][3] = {
-        {1,3,2},
-        {2,3,0},
-        {0,3,1},
-        {0,1,2}
-    };
-    return ccw[vert][position];
-}
-
-int cw_order(int vert, int position) {
-    int cw[4][3] = {
-        {1,2,3},
-        {2,0,3},
-        {0,1,3},
-        {0,2,1}
-    };
-    return cw[vert][position];
-}
+/*bool identification_facet(Facet facet,Hrbf_function function,Delaunay dl){
+ Cell_handle cell_handle = facet.first;
+ int vertex_index = facet.second;
+ Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
+ std::cout << "-----" << std::endl;
+ if (dl.is_infinite(facet)) std::cout << "infinite face" << std::endl;
+ bool is_cell_in = cell_inside(cell_handle,function,dl);
+ bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
+ std::cout << "-----" << std::endl;
+ if (is_cell_in && is_opposite_cell_in) return false;
+ if (!is_cell_in && !is_opposite_cell_in) return false;
+ return true;
+ }
+ bool cell_inside(Cell_handle cell,Crbf_function function,Delaunay dl){
+ // if (dl.is_infinite(cell))return false;
+ Tetrahedron_3 tet = dl.tetrahedron(cell);
+ Point centroid = CGAL::centroid(tet);
+ double f = function(centroid);
+ return f < -1.0e-5;
+ }
+ bool identification_facet(Facet facet,Crbf_function function,Delaunay dl){
+ Cell_handle cell_handle = facet.first;
+ int vertex_index = facet.second;
+ Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
+ bool is_cell_in = cell_inside(cell_handle,function,dl);
+ bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
+ if (is_cell_in && is_opposite_cell_in) return false;
+ if (!is_cell_in && !is_opposite_cell_in) return false;
+ return true;
+ }
+ bool cell_inside(Cell_handle cell,Poisson_reconstruction_function function,Delaunay dl){
+ // if (dl.is_infinite(cell))return false;
+ Tetrahedron_3 tet = dl.tetrahedron(cell);
+ Point centroid = CGAL::centroid(tet);
+ double f = function(centroid);
+ return f < -1.0e-5;
+ }
+ bool identification_facet(Facet facet,Poisson_reconstruction_function function,Delaunay dl){
+ Cell_handle cell_handle = facet.first;
+ int vertex_index = facet.second;
+ Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
+ bool is_cell_in = cell_inside(cell_handle,function,dl);
+ bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
+ if (is_cell_in && is_opposite_cell_in) return false;
+ if (!is_cell_in && !is_opposite_cell_in) return false;
+ return true;
+ }
+ int ccw_order(int vert, int position) {
+ int ccw[4][3] = {
+ {1,3,2},
+ {2,3,0},
+ {0,3,1},
+ {0,1,2}
+ };
+ return ccw[vert][position];
+ }
+ 
+ int cw_order(int vert, int position) {
+ int cw[4][3] = {
+ {1,2,3},
+ {2,0,3},
+ {0,1,3},
+ {0,2,1}
+ };
+ return cw[vert][position];
+ }*/
 
 void
 Viewer::selectedVertDeformation(Vec3& selected_point,
@@ -953,6 +952,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     double distance,disp;
     for(unsigned i=0;i<meshPtr->numVerts();i++){
         Vec3 p_neighbor = meshPtr->getVertPos(i);
+        
         distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
         
         if(distance>thr)disp=0;
@@ -993,7 +993,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     if(reconstructionValue==0){
         HRBF_fit<double, 3, Rbf_pow3<double> > hrbf;
         hrbf.hermite_fit(points2, normals2);
-        FT averagespacing = CGAL::compute_average_spacing(points.begin(),points.end(),CGAL::First_of_pair_property_map<PointVectorPair>(),6);
         int size=(int)points2.size();
         PointList pt;
         for(std::size_t i=0;i<points2.size();i++){
@@ -1002,72 +1001,17 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         Min_sphere  ms (pt.begin(), pt.end());
         Hrbf_function function(hrbf);
         
-        FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
-        Surface_3_hrbf surface(function,
-                               Sphere(ms.center(),ms.squared_radius()*1.5));
-        
-        CGAL::Surface_mesh_default_criteria_3<STr>
-        criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
         Delaunay dl;
         SurfaceMesh output_mesh;
         for (std::size_t i = 0; i < points2.size(); ++i) {
             dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
         }
-        std::map<Vertex_handle,int> mp;
-        Delaunay::Finite_vertices_iterator vit;
-        int i=0;
-        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
-            mp.insert(std::map<Vertex_handle,int>::value_type(vit,(int)i));
-            ++i;
-        }
-        
-        Build_surface<HalfedgeDS> polyhedron;
-        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
-            polyhedron.addVertex((Point)vit->point());
-        }
-        All_facets_iterator fit;
-        std::vector<int> indices;
-        std::set<std::vector<int> > st;
-        
-        for(fit=dl.all_facets_begin();fit!=dl.all_facets_end();fit++){
-            
-           //if(identification_facet(*fit,function,dl)){
-                Cell_handle cell_handle = fit->first;
-                int vert_index = fit->second;
-                int vert_indices[3];
-                if (cell_inside(cell_handle,function,dl)) {
-                    for (int i = 0; i < 3; ++i) {
-                        vert_indices[i] = cw_order(vert_index, i);
-                    }
-                } else {
-                    for (int i = 0; i < 3; ++i) {
-                        vert_indices[i] = ccw_order(vert_index, i);
-                    }
-                }
-                auto itr=mp.find(fit->first->vertex(vert_indices[0]));
-                if( itr != mp.end() ) {
-                    indices.push_back(itr->second);
-                }
-                itr=mp.find(fit->first->vertex(vert_indices[1]));
-                if( itr != mp.end() ) {
-                    indices.push_back(itr->second);
-                }
-                itr=mp.find(fit->first->vertex(vert_indices[2]));
-                if( itr != mp.end() ) {
-                    indices.push_back(itr->second);
-                }
-                st.insert(indices);
-                indices.erase(indices.begin(),indices.end());
-            //}
-        }
-        
-        polyhedron.addFace(st);
-        output_mesh.delegate(polyhedron);
-        createOBJFile("sphere_hrbf.obj",output_mesh);
+        Cell_inside<Delaunay, Hrbf_function> cellin(dl, function);
+        Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b(dl, cellin);
+        output_mesh.delegate(b);
         setMeshFromPolyhedron(output_mesh, meshPtr);
         
     }
-    
     //HRBF_closed
     if(reconstructionValue==1){
         
@@ -1075,10 +1019,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         rho = rho * 5;
         double eta = 50.0 / (rho*rho);
         std::cout << "eta: " << eta << " ; rho: " << rho << std::endl;
-        FT averagespacing = CGAL::compute_average_spacing(points.begin(),
-                                                          points.end(),
-                                                          CGAL::First_of_pair_property_map<PointVectorPair>(),
-                                                          6);
         // Evaluate on the grid
         
         HRBF_closed crbf(mcgrid.structuredGrid, normals2, points2, rho, eta);
@@ -1086,73 +1026,15 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         for(std::size_t i=0;i<points2.size();i++){
             pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
         }
-        Min_sphere  ms (pt.begin(), pt.end());
         Crbf_function function(crbf);
-        FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
-        Surface_3_crbf surface(function,
-                               Sphere(ms.center(),ms.squared_radius()*1.5));
-        
-        CGAL::Surface_mesh_default_criteria_3<STr>
-        criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
         Delaunay dl;
         SurfaceMesh output_mesh;
         for (std::size_t i = 0; i < points2.size(); ++i) {
             dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
         }
-        std::map<Vertex_handle,int> mp;
-        Delaunay::Finite_vertices_iterator vit;
-        int i=0;
-        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
-            mp.insert(std::map<Vertex_handle,int>::value_type(vit,(int)i));
-            ++i;
-        }
-        
-        Build_surface<HalfedgeDS> polyhedron;
-        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
-            polyhedron.addVertex((Point)vit->point());
-        }
-        All_facets_iterator fit;
-        std::vector<int> indices;
-        std::set<std::vector<int> > st;
-        
-        for(fit=dl.all_facets_begin();fit!=dl.all_facets_end();fit++){
-            if (dl.is_infinite(*fit)) {
-                std::cout << "infinite facet" << std::endl;
-            }
-            if(identification_facet(*fit,function,dl)){
-                Cell_handle cell_handle = fit->first;
-                int vert_index = fit->second;
-                int vert_indices[3];
-                if (cell_inside(cell_handle,function,dl)) {
-                    for (int i = 0; i < 3; ++i) {
-                        vert_indices[i] = cw_order(vert_index, i);
-                    }
-                } else {
-                    for (int i = 0; i < 3; ++i) {
-                        vert_indices[i] = ccw_order(vert_index, i);
-                    }
-                }
-                auto itr=mp.find(fit->first->vertex(vert_indices[0]));
-                if( itr != mp.end() ) {
-                    indices.push_back(itr->second);
-                }
-                itr=mp.find(fit->first->vertex(vert_indices[1]));
-                if( itr != mp.end() ) {
-                    indices.push_back(itr->second);
-                }
-                itr=mp.find(fit->first->vertex(vert_indices[2]));
-                if( itr != mp.end() ) {
-                    indices.push_back(itr->second);
-                }
-                st.insert(indices);
-                indices.erase(indices.begin(),indices.end());
-            }
-        }
-        
-        polyhedron.addFace(st);
-        output_mesh.delegate(polyhedron);
-        createOBJFile("sphere_hrbfClosed.obj",output_mesh);
-        
+        Cell_inside<Delaunay, Crbf_function> cellin(dl, function);
+        Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b(dl, cellin);
+        output_mesh.delegate(b);
         setMeshFromPolyhedron(output_mesh, meshPtr);
     }
     
@@ -1167,10 +1049,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
             pwn.push_back(pn);
         }
         
-        FT averagespacing = CGAL::compute_average_spacing(points.begin(),
-                                                          points.end(),
-                                                          CGAL::First_of_pair_property_map<PointVectorPair>(),
-                                                          6);
         Poisson_reconstruction_function
         function(pwn.begin(), pwn.end(),
                  CGAL::make_normal_of_point_with_normal_pmap(PointList::value_type()));
@@ -1178,77 +1056,15 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         if ( !function.compute_implicit_function() )
             exit(EXIT_FAILURE);
         
-        Point inner_point = function.get_inner_point();
-        Sphere bsphere = function.bounding_sphere();
-        FT radius = std::sqrt(bsphere.squared_radius());
-        
-        FT sm_sphere_radius = 5.0 * radius;
-        FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
-        Surface_3 surface(function,
-                          Sphere(inner_point,sm_sphere_radius*sm_sphere_radius),
-                          sm_dichotomy_error/sm_sphere_radius);
-        
-        CGAL::Surface_mesh_default_criteria_3<STr>
-        criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
         Delaunay dl;
         SurfaceMesh output_mesh;
         for (std::size_t i = 0; i < points2.size(); ++i) {
             dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
         }
-        std::map<Vertex_handle,int> mp;
-        Delaunay::Finite_vertices_iterator vit;
-        int i=0;
-        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
-            mp.insert(std::map<Vertex_handle,int>::value_type(vit,(int)i));
-            ++i;
-        }
-        
-        Build_surface<HalfedgeDS> polyhedron;
-        for (vit = dl.finite_vertices_begin(); vit != dl.finite_vertices_end(); ++vit){
-            polyhedron.addVertex((Point)vit->point());
-        }
-        Finite_facets_iterator fit;
-        std::vector<int> indices;
-        std::set<std::vector<int> > st;
-        
-        for(fit=dl.finite_facets_begin();fit!=dl.finite_facets_end();fit++){
-            
-            if(identification_facet(*fit,function,dl)){
-                Cell_handle cell_handle = fit->first;
-                int vert_index = fit->second;
-                int vert_indices[3];
-                if (cell_inside(cell_handle,function,dl)) {
-                    for (int i = 0; i < 3; ++i) {
-                        vert_indices[i] = cw_order(vert_index, i);
-                    }
-                } else {
-                    for (int i = 0; i < 3; ++i) {
-                        vert_indices[i] = ccw_order(vert_index, i);
-                    }
-                }
-                auto itr=mp.find(fit->first->vertex(vert_indices[0]));
-                if( itr != mp.end() ) {
-                    indices.push_back(itr->second);
-                }
-                itr=mp.find(fit->first->vertex(vert_indices[1]));
-                if( itr != mp.end() ) {
-                    indices.push_back(itr->second);
-                }
-                itr=mp.find(fit->first->vertex(vert_indices[2]));
-                if( itr != mp.end() ) {
-                    indices.push_back(itr->second);
-                }
-                st.insert(indices);
-                indices.erase(indices.begin(),indices.end());
-            }
-        }
-        
-        polyhedron.addFace(st);
-        output_mesh.delegate(polyhedron);
-        createOBJFile("sphere_poisson.obj",output_mesh);
-        
+        Cell_inside<Delaunay, Poisson_reconstruction_function> cellin(dl, function);
+        Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b(dl, cellin);
+        output_mesh.delegate(b);
         setMeshFromPolyhedron(output_mesh, meshPtr);
-        //meshPtr->normalize();
     }
     
     std::cout<<"drawed"<<std::endl;

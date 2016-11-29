@@ -58,6 +58,10 @@ GL/glut.h
 Quaternion.h
 /Users/m5201138/src/Quaternion.h
 
+/Users/m5201138/src/Cell_inside.h
+CGAL/centroid.h
+-
+
 /Users/m5201138/src/HRBF_closed.h
 vector
 -
@@ -120,6 +124,20 @@ GL/gl.h
 GL/glext.h
 -
 string
+-
+
+/Users/m5201138/src/Surface_builder.h
+CGAL/Modifier_base.h
+-
+CGAL/Polyhedron_incremental_builder_3.h
+-
+map
+-
+set
+-
+stack
+-
+utility
 -
 
 /Users/m5201138/src/TriMesh.cpp
@@ -187,6 +205,10 @@ HRBF_closed.h
 /Users/m5201138/src/HRBF_closed.h
 Build_surface.h
 /Users/m5201138/src/Build_surface.h
+Cell_inside.h
+/Users/m5201138/src/Cell_inside.h
+Surface_builder.h
+/Users/m5201138/src/Surface_builder.h
 utility
 -
 fstream

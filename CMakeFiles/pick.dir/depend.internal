@@ -34,10 +34,12 @@ CMakeFiles/pick.dir/Viewer.cpp.o
  /Users/m5201138/src/Build_surface.h
  /Users/m5201138/src/CIsoSurface.h
  /Users/m5201138/src/Camera.h
+ /Users/m5201138/src/Cell_inside.h
  /Users/m5201138/src/HRBF_closed.h
  /Users/m5201138/src/Image.h
  /Users/m5201138/src/Quaternion.h
  /Users/m5201138/src/Shader.h
+ /Users/m5201138/src/Surface_builder.h
  /Users/m5201138/src/TriMesh.h
  /Users/m5201138/src/Vectors.h
  /Users/m5201138/src/Viewer.cpp
