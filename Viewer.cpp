@@ -1,8 +1,9 @@
-//#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/pca_estimate_normals.h>
 #include <CGAL/mst_orient_normals.h>
 #include <CGAL/property_map.h>
 #include <map>
+#include <sys/time.h>
 #include <eigen/Eigen/Core>
 
 #include "hrbf_core.h"
@@ -41,6 +42,9 @@
 #include <CGAL/Triangulation_data_structure_3.h>
 #include <CGAL/Tetrahedron_3.h>
 #include <CGAL/Polyhedron_incremental_builder_3.h>
+#include <CGAL/property_map.h>
+
+#include <CGAL/Polygon_mesh_processing/refine.h>
 
 #include <cstdlib>
 #include <iostream>
@@ -70,9 +74,9 @@ int  Viewer::windowSize[2] = { 800, 800 };
 bool Viewer::renderWireframe = false;
 bool Viewer::renderSelected = false;
 bool changedisp=false;
-
+bool deformationSwitch=true;
 //use in selectedVertDeformation
-double d=0.1;
+double d=0.005;
 
 std::set<unsigned> Viewer::selectedVert;
 TriMesh* Viewer::meshPtr = 0;
@@ -116,7 +120,12 @@ typedef Delaunay::Finite_facets_iterator Finite_facets_iterator;
 typedef Delaunay::All_facets_iterator All_facets_iterator;
 typedef CGAL::Tetrahedron_3<Kernel> Tetrahedron_3;
 typedef SurfaceMesh::HalfedgeDS             HalfedgeDS;
-
+// Concurrency
+#ifdef CGAL_LINKED_WITH_TBB
+typedef CGAL::Parallel_tag Concurrency_tag;
+#else
+typedef CGAL::Sequential_tag Concurrency_tag;
+#endif
 
 //typedef CGAL::Surface_mesh_complex_2_in_triangulation_3<> C2t3_d;
 
@@ -127,13 +136,14 @@ typedef Delaunay::Vertex_handle    Vertex_handle;
 typedef Delaunay::Finite_cells_iterator Finite_cells_iterator;
 int reconstructionValue;
 double thr;
-double alpha;
+double sigma;
 int nb_neighbors;
 int nb_neighbors2;
 FT sm_angle;
 FT sm_radius;
 FT sm_distance;
 FT sm_sphere_radius;
+int resamplingSwitch;
 
 // Precompute and keep the grids used by MC algorithm
 struct MCGrid {
@@ -244,6 +254,11 @@ Viewer::keyboard(unsigned char c, int /*x*/, int /*y*/)
         case '-':
             d-=0.1;
             std::cout<<"value of d = "<<d<<std::endl;
+            break;
+        case 'd':
+            deformationSwitch=!deformationSwitch;
+            if(deformationSwitch==true)std::cout<<"Deformation mode ON"<<std::endl;
+            else std::cout<<"Deformation mode OFF"<<std::endl;
             break;
         default:
             break;
@@ -792,7 +807,6 @@ setMeshFromPolyhedron(SurfaceMesh& output_mesh,
         do {
             f.push_back(index[VCI(hc->vertex())]);
             ++hc;
-            std::cout<<index[VCI(hc->vertex())]<<std::endl;
         } while(hc != hc_end);
         
         faces.push_back(f);
@@ -802,6 +816,7 @@ setMeshFromPolyhedron(SurfaceMesh& output_mesh,
     std::cout << faces.size() << std::endl;
     
     meshPtr->setData(vertices, faces);
+    meshPtr->normalize();
 }
 
 void Viewer::read(const char* filename){
@@ -815,7 +830,7 @@ void Viewer::read(const char* filename){
         if (token == "reconstruction(Hrbf=0,closedHrbf=1,Poisson=2)")
         {
             ss >> reconstructionValue;
-            
+            std::cout<<"reconstructionValue"<<reconstructionValue<<std::endl;
             continue;
         }
         if(token=="threshold")
@@ -823,8 +838,8 @@ void Viewer::read(const char* filename){
             ss>>thr;
             continue;
         }
-        if(token=="alpha"){
-            ss>>alpha;
+        if(token=="sigma"){
+            ss>>sigma;
             continue;
         }
         if(token=="nb_neighbors"){
@@ -853,94 +868,127 @@ void Viewer::read(const char* filename){
             sm_distance=distance;
             continue;
         }
+        if(token=="resampling(off=0,on=1)"){
+            ss>>resamplingSwitch;
+            continue;
+        }
     }
     
     in.close();
 }
-bool cell_inside(Cell_handle cell,Hrbf_function function,Delaunay dl){
-    if (dl.is_infinite(cell))return false;
-    Tetrahedron_3 tet = dl.tetrahedron(cell);
-    Point centroid = CGAL::centroid(tet);
-    double f = function(centroid);
-    std::cout<<f<<std::endl;
-    return f < -1.0e-5;
+
+
+Delaunay resampling(SurfaceMesh& output_mesh,TriMesh* meshPtr,double length,Delaunay dl)
+{
+    typedef typename SurfaceMesh::Vertex_const_iterator VCI;
+    typedef typename SurfaceMesh::Facet_const_iterator FCI;
+    typedef typename SurfaceMesh::Halfedge_around_facet_const_circulator HFCC;
+    
+    std::vector<Vec3> vertices;
+    std::vector< std::vector<unsigned> > faces;
+    
+    for (VCI vi = output_mesh.vertices_begin();
+         vi != output_mesh.vertices_end();
+         ++vi)
+    {
+        Vec3 v(CGAL::to_double(vi->point().x()),
+               CGAL::to_double(vi->point().y()),
+               CGAL::to_double(vi->point().z()));
+        vertices.push_back(v);
+    }
+    
+    typedef CGAL::Inverse_index<VCI> Index;
+    Index index(output_mesh.vertices_begin(), output_mesh.vertices_end());
+    
+    for (FCI fi = output_mesh.facets_begin();
+         fi != output_mesh.facets_end();
+         ++fi)
+    {
+        HFCC hc = fi->facet_begin();
+        HFCC hc_end = hc;
+        std::vector<unsigned> f;
+        do {
+            f.push_back(index[VCI(hc->vertex())]);
+            ++hc;
+        } while(hc != hc_end);
+        
+        faces.push_back(f);
+    }
+    double pointX,pointY,pointZ;
+    double dist0;
+    double dist1;
+    double dist2;
+    for(std::size_t i=0;i<vertices.size();i++){
+        
+        dist0=sqrt(pow(vertices[faces[i][0]].x-vertices[faces[i][1]].x,2)+pow(vertices[faces[i][0]].y-vertices[faces[i][1]].y,2)+pow(vertices[faces[i][0]].z-vertices[faces[i][1]].z,2));
+        dist1=sqrt(pow(vertices[faces[i][1]].x-vertices[faces[i][2]].x,2)+pow(vertices[faces[i][1]].y-vertices[faces[i][2]].y,2)+pow(vertices[faces[i][1]].z-vertices[faces[i][2]].z,2));
+        dist2=sqrt(pow(vertices[faces[i][2]].x-vertices[faces[i][0]].x,2)+pow(vertices[faces[i][2]].y-vertices[faces[i][0]].y,2)+pow(vertices[faces[i][2]].z-vertices[faces[i][0]].z,2));
+        if(dist0>length||dist1>length||dist2>length){
+            pointX=vertices[faces[i][0]].x+vertices[faces[i][1]].x+vertices[faces[i][2]].x/3;
+            pointY=vertices[faces[i][0]].y+vertices[faces[i][1]].y+vertices[faces[i][2]].y/3;
+            pointZ=vertices[faces[i][0]].z+vertices[faces[i][1]].z+vertices[faces[i][2]].z/3;
+            dl.insert(Delaunay::Point(pointX, pointY,pointZ));
+        }
+    }
+    // setMeshFromPolyhedron(output_mesh, meshPtr);
+    return dl;
+    
 }
-/*bool identification_facet(Facet facet,Hrbf_function function,Delaunay dl){
- Cell_handle cell_handle = facet.first;
- int vertex_index = facet.second;
- Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
- std::cout << "-----" << std::endl;
- if (dl.is_infinite(facet)) std::cout << "infinite face" << std::endl;
- bool is_cell_in = cell_inside(cell_handle,function,dl);
- bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
- std::cout << "-----" << std::endl;
- if (is_cell_in && is_opposite_cell_in) return false;
- if (!is_cell_in && !is_opposite_cell_in) return false;
- return true;
- }
- bool cell_inside(Cell_handle cell,Crbf_function function,Delaunay dl){
- // if (dl.is_infinite(cell))return false;
- Tetrahedron_3 tet = dl.tetrahedron(cell);
- Point centroid = CGAL::centroid(tet);
- double f = function(centroid);
- return f < -1.0e-5;
- }
- bool identification_facet(Facet facet,Crbf_function function,Delaunay dl){
- Cell_handle cell_handle = facet.first;
- int vertex_index = facet.second;
- Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
- bool is_cell_in = cell_inside(cell_handle,function,dl);
- bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
- if (is_cell_in && is_opposite_cell_in) return false;
- if (!is_cell_in && !is_opposite_cell_in) return false;
- return true;
- }
- bool cell_inside(Cell_handle cell,Poisson_reconstruction_function function,Delaunay dl){
- // if (dl.is_infinite(cell))return false;
- Tetrahedron_3 tet = dl.tetrahedron(cell);
- Point centroid = CGAL::centroid(tet);
- double f = function(centroid);
- return f < -1.0e-5;
- }
- bool identification_facet(Facet facet,Poisson_reconstruction_function function,Delaunay dl){
- Cell_handle cell_handle = facet.first;
- int vertex_index = facet.second;
- Cell_handle opposite_cell_handle = cell_handle->neighbor(vertex_index);
- bool is_cell_in = cell_inside(cell_handle,function,dl);
- bool is_opposite_cell_in = cell_inside(opposite_cell_handle,function,dl);
- if (is_cell_in && is_opposite_cell_in) return false;
- if (!is_cell_in && !is_opposite_cell_in) return false;
- return true;
- }
- int ccw_order(int vert, int position) {
- int ccw[4][3] = {
- {1,3,2},
- {2,3,0},
- {0,3,1},
- {0,1,2}
- };
- return ccw[vert][position];
- }
- 
- int cw_order(int vert, int position) {
- int cw[4][3] = {
- {1,2,3},
- {2,0,3},
- {0,1,3},
- {0,2,1}
- };
- return cw[vert][position];
- }*/
+
+Hrbf_function HRBF_reconstruction(std::vector<Vector3>& points,std::vector<Vector3>& normals){
+    std::cout<<"HRBF mode"<<std::endl;
+    HRBF_fit<double, 3, Rbf_pow3<double> > hrbf;
+    hrbf.hermite_fit(points, normals);
+    PointList pt;
+    for(std::size_t i=0;i<points.size();i++){
+        pt.push_back(Point(points[i][0], points[i][1], points[i][2]));
+    }
+    Hrbf_function function(hrbf);
+    return function;
+}
+
+Crbf_function HRBF_closed_reconstruction(std::vector<PointVectorPair>& points,std::vector<Vector3>& points2,std::vector<Vector3>& normals2){
+    std::cout<<"closed rbf mode"<<std::endl;
+    double rho = CGAL::compute_average_spacing<Concurrency_tag>(points.begin(), points.end(),CGAL::First_of_pair_property_map<PointVectorPair>(),nb_neighbors2);
+    rho = rho * 5;
+    double eta = 50.0 / (rho*rho);
+    std::cout << "eta: " << eta << " ; rho: " << rho << std::endl;
+    // Evaluate on the grid
+    
+    HRBF_closed crbf(mcgrid.structuredGrid, normals2, points2, rho, eta);
+    PointList pt;
+    for(std::size_t i=0;i<points2.size();i++){
+        pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
+    }
+    Crbf_function function(crbf);
+    return function;
+}
+Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& points,std::vector<Vector3>& normals){
+    std::cout<<"Poisson mode"<<std::endl;
+    PointNormalList pwn;
+    for (std::size_t i = 0; i < points.size(); ++i) {
+        Point pt(points[i][0], points[i][1], points[i][2]);
+        Vector nm(normals[i][0], normals[i][1], normals[i][2]);
+        Point_with_normal_3 pn(pt, nm);
+        pwn.push_back(pn);
+    }
+    
+    Poisson_reconstruction_function
+    function(pwn.begin(), pwn.end(),
+             CGAL::make_normal_of_point_with_normal_pmap(PointList::value_type()));
+    if (!function.compute_implicit_function())exit(EXIT_FAILURE);
+    return function;
+}
+
 
 void
 Viewer::selectedVertDeformation(Vec3& selected_point,
                                 Vec3& selected_normal)
 {
+    int count=0;
     std::vector<PointVectorPair> points;
     PointList vertices;
     std::vector<Vec3> deformationPoints;
-    PointNormalList pwn;
-    
     double selected_x = selected_point.x;
     double selected_y = selected_point.y;
     double selected_z = selected_point.z;
@@ -948,27 +996,42 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     double normal_x = selected_normal.x;
     double normal_y = selected_normal.y;
     double normal_z = selected_normal.z;
-    
     double distance,disp;
+    std::vector<Point> deformationArea;
     for(unsigned i=0;i<meshPtr->numVerts();i++){
         Vec3 p_neighbor = meshPtr->getVertPos(i);
+        if(deformationSwitch==true){
+            distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
+            
+            if(distance>thr)disp=0;
+            else if(changedisp==true)disp=-d*exp(-(pow(distance,2)/pow(sigma,2)));
+            else if(changedisp==false)disp=d*exp(-(pow(distance,2)/pow(sigma,2)));
+            
+            Point p(p_neighbor.x+disp*normal_x,
+                    p_neighbor.y+disp*normal_y,
+                    p_neighbor.z+disp*normal_z);
+            vertices.push_back(p);
+            if(disp!=0){
+                deformationArea.push_back(p);
+                count++;
+            }
+            Vector tmp(0, 0, 0);
+            points.push_back(std::make_pair(p, tmp));
+            
+        }
+        else{
+            Point p(p_neighbor.x,
+                    p_neighbor.y,
+                    p_neighbor.z);
+            vertices.push_back(p);
+            Vector tmp(0, 0, 0);
+            points.push_back(std::make_pair(p, tmp));
+        }
         
-        distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
-        
-        if(distance>thr)disp=0;
-        else if(changedisp==true)disp=-d*exp(-alpha*pow(distance,2));
-        else if(changedisp==false)disp=d*exp(-alpha*pow(distance,2));
-        
-        Point p(p_neighbor.x+disp*normal_x,
-                p_neighbor.y+disp*normal_y,
-                p_neighbor.z+disp*normal_z);
-        vertices.push_back(p);
-        Vector tmp(0, 0, 0);
-        points.push_back(std::make_pair(p, tmp));
     }
+    std::cout<<"thr内の点の数"<<count<<std::endl;
     
-    
-    CGAL::pca_estimate_normals(points.begin(), points.end(), CGAL::First_of_pair_property_map<PointVectorPair>(), CGAL::Second_of_pair_property_map<PointVectorPair>(), nb_neighbors);
+    CGAL::pca_estimate_normals<Concurrency_tag>(points.begin(), points.end(), CGAL::First_of_pair_property_map<PointVectorPair>(), CGAL::Second_of_pair_property_map<PointVectorPair>(), nb_neighbors);
     
     std::vector<PointVectorPair>::iterator unoriented_points_begin =
     CGAL::mst_orient_normals(points.begin(), points.end(),
@@ -978,7 +1041,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     
     std::vector<Vector3> points2;
     std::vector<Vector3> normals2;
-    
+    std::vector<Point> points3;
     points.erase(unoriented_points_begin, points.end());
     for(unsigned i=0; i<points.size(); i++){
         Vector3 p_tmp(points[i].first.x(), points[i].first.y(),
@@ -988,84 +1051,79 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         
         points2.push_back(p_tmp);
         normals2.push_back(n_tmp);
+        
     }
+    for(unsigned i=0; i<points.size(); i++){
+        points3.push_back(Point(points[i].first.x(), points[i].first.y(),
+                                points[i].first.z()));
+    }
+    
+    double averagespacing = CGAL::compute_average_spacing<Concurrency_tag>(points3.begin(), points3.end(),CGAL::Identity_property_map<Point>() ,nb_neighbors2);
+    struct timeval s, e;
+    gettimeofday(&s, NULL);
+    
+    SurfaceMesh output_mesh;
+    
     //HRBF reconstruction
     if(reconstructionValue==0){
-        HRBF_fit<double, 3, Rbf_pow3<double> > hrbf;
-        hrbf.hermite_fit(points2, normals2);
-        int size=(int)points2.size();
-        PointList pt;
-        for(std::size_t i=0;i<points2.size();i++){
-            pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
-        }
-        Min_sphere  ms (pt.begin(), pt.end());
-        Hrbf_function function(hrbf);
+        Hrbf_function function=HRBF_reconstruction(points2,normals2);
         
         Delaunay dl;
-        SurfaceMesh output_mesh;
         for (std::size_t i = 0; i < points2.size(); ++i) {
             dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
         }
         Cell_inside<Delaunay, Hrbf_function> cellin(dl, function);
         Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b(dl, cellin);
         output_mesh.delegate(b);
-        setMeshFromPolyhedron(output_mesh, meshPtr);
-        
-    }
-    //HRBF_closed
-    if(reconstructionValue==1){
-        
-        double rho = CGAL::compute_average_spacing(points.begin(), points.end(),CGAL::First_of_pair_property_map<PointVectorPair>(),nb_neighbors2);
-        rho = rho * 5;
-        double eta = 50.0 / (rho*rho);
-        std::cout << "eta: " << eta << " ; rho: " << rho << std::endl;
-        // Evaluate on the grid
-        
-        HRBF_closed crbf(mcgrid.structuredGrid, normals2, points2, rho, eta);
-        PointList pt;
-        for(std::size_t i=0;i<points2.size();i++){
-            pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
+        if(resamplingSwitch==1){
+            Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
+            Cell_inside<Delaunay, Hrbf_function> cellin2(dl2, function);
+            Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b2(dl2, cellin2);
+            output_mesh.delegate(b2);
         }
-        Crbf_function function(crbf);
+    }
+    
+    //HRBF_closed
+    else if(reconstructionValue==1){
+        Crbf_function function=HRBF_closed_reconstruction(points,points2,normals2);
+        
         Delaunay dl;
-        SurfaceMesh output_mesh;
         for (std::size_t i = 0; i < points2.size(); ++i) {
             dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
         }
         Cell_inside<Delaunay, Crbf_function> cellin(dl, function);
         Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b(dl, cellin);
         output_mesh.delegate(b);
-        setMeshFromPolyhedron(output_mesh, meshPtr);
+        if(resamplingSwitch==1){
+            Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
+            Cell_inside<Delaunay, Crbf_function> cellin2(dl2, function);
+            Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b2(dl2, cellin2);
+            output_mesh.delegate(b2);
+        }
     }
     
     // Poisson reconstruction
-    if(reconstructionValue==2){
-        
-        
-        for (std::size_t i = 0; i < points2.size(); ++i) {
-            Point pt(points2[i][0], points2[i][1], points2[i][2]);
-            Vector nm(normals2[i][0], normals2[i][1], normals2[i][2]);
-            Point_with_normal_3 pn(pt, nm);
-            pwn.push_back(pn);
-        }
-        
-        Poisson_reconstruction_function
-        function(pwn.begin(), pwn.end(),
-                 CGAL::make_normal_of_point_with_normal_pmap(PointList::value_type()));
-        
-        if ( !function.compute_implicit_function() )
-            exit(EXIT_FAILURE);
-        
+    else if(reconstructionValue==2){
+        Poisson_reconstruction_function function=Poisson_reconstruction(points2,normals2);
         Delaunay dl;
-        SurfaceMesh output_mesh;
         for (std::size_t i = 0; i < points2.size(); ++i) {
             dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
         }
         Cell_inside<Delaunay, Poisson_reconstruction_function> cellin(dl, function);
         Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b(dl, cellin);
         output_mesh.delegate(b);
-        setMeshFromPolyhedron(output_mesh, meshPtr);
+        if(resamplingSwitch==1){
+            Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
+            Cell_inside<Delaunay, Poisson_reconstruction_function> cellin2(dl2, function);
+            Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b2(dl2, cellin2);
+            output_mesh.delegate(b2);
+        }
     }
+    
+    createOBJFile("out.obj",output_mesh);
+    setMeshFromPolyhedron(output_mesh, meshPtr);
+    gettimeofday(&e, NULL);
+    printf("time = %lf\n", (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6);
     
     std::cout<<"drawed"<<std::endl;
 }

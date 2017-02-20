@@ -10,7 +10,7 @@
 class Viewer
 {
 public:
-   // Parameters
+    // Parameters
    static int  windowSize[2];
    static bool renderWireframe;
    static bool renderSelected;

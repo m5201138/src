@@ -1,8 +1,9 @@
 reconstruction(Hrbf=0,closedHrbf=1,Poisson=2) 0
-threshold 0.9
-alpha 200.0
+threshold 0.03
+sigma 10
 nb_neighbors 18
 nb_neighbors2 6
 sm_angle 20.0
 sm_radius 5.0
 sm_distance 0.15
+resampling(off=0,on=1) 1

@@ -28,7 +28,7 @@ class Cell_inside {
     Tetrahedron tet = tr.tetrahedron(cell_handle);
     Point centroid = CGAL::centroid(tet);
     double f = fun(centroid);
-    return f < -1.0e-5;//0.0;
+      return f <1.0;//0.0;
   }
 };
 

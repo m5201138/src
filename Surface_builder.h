@@ -111,7 +111,7 @@ public:
         if (builder.test_facet(indices+0, indices+3))
           builder.add_facet(indices+0, indices+3);
         else {
-          /* 
+          /*
           builder.begin_facet();
           builder.add_vertex_to_facet(indices[2]);
           builder.add_vertex_to_facet(indices[1]);
