@@ -195,6 +195,8 @@ void TriMesh::setData(POINT3D *m_ppt3dVertices ,int m_nVertices,unsigned int *m_
     mFaceToVert.push_back(face);
     // std::cout<<mFaceToVert[i][0]<<std::endl;
   }
+    std::cout<<"number of points: "<<mPoints.size()<<std::endl;
+    std::cout<<"number of faces: "<<mFaceToVert.size()<<std::endl;
 }
 
 

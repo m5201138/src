@@ -54,6 +54,7 @@
 #include "Viewer.h"
 #include "Image.h"
 #include "TriMesh.h"
+#include <chrono>
 
 #ifdef __APPLE__
 #include <GLUT/glut.h>
@@ -76,7 +77,7 @@ bool Viewer::renderSelected = false;
 bool changedisp=false;
 bool deformationSwitch=true;
 //use in selectedVertDeformation
-double d=0.005;
+double d=0.1;
 
 std::set<unsigned> Viewer::selectedVert;
 TriMesh* Viewer::meshPtr = 0;
@@ -144,6 +145,8 @@ FT sm_radius;
 FT sm_distance;
 FT sm_sphere_radius;
 int resamplingSwitch;
+int mesher;
+int gridsize;
 
 // Precompute and keep the grids used by MC algorithm
 struct MCGrid {
@@ -199,9 +202,9 @@ initMCGrid()
     //std::vector<Vector3> structuredGrid;
     Vector3 leftCorner(-1.5,-1.5,-1.5);
     Vector3 rightCorner(1.5,1.5,1.5);
-    mcgrid.subx = 64;
-    mcgrid.suby = 64;
-    mcgrid.subz = 64;
+    mcgrid.subx = gridsize;
+    mcgrid.suby = gridsize;
+    mcgrid.subz = gridsize;
     createGrid(leftCorner, rightCorner,
                mcgrid.subx, mcgrid.suby, mcgrid.subz,
                mcgrid.structuredGrid);
@@ -872,6 +875,14 @@ void Viewer::read(const char* filename){
             ss>>resamplingSwitch;
             continue;
         }
+        if(token=="mesher(marching=0,OurDelaunay=1,CGAL’sDelaunay=2)"){
+            ss>>mesher;
+            continue;
+        }
+        if(token=="gridsize"){
+            ss>>gridsize;
+            continue;
+        }
     }
     
     in.close();
@@ -935,7 +946,7 @@ Delaunay resampling(SurfaceMesh& output_mesh,TriMesh* meshPtr,double length,Dela
     
 }
 
-Hrbf_function HRBF_reconstruction(std::vector<Vector3>& points,std::vector<Vector3>& normals){
+Hrbf_function HRBF_reconstruction(std::vector<Vector3>& points,std::vector<Vector3>& normals,TriMesh* meshPtr){
     std::cout<<"HRBF mode"<<std::endl;
     HRBF_fit<double, 3, Rbf_pow3<double> > hrbf;
     hrbf.hermite_fit(points, normals);
@@ -944,10 +955,33 @@ Hrbf_function HRBF_reconstruction(std::vector<Vector3>& points,std::vector<Vecto
         pt.push_back(Point(points[i][0], points[i][1], points[i][2]));
     }
     Hrbf_function function(hrbf);
+    if(mesher==0){
+        const auto startTime = std::chrono::system_clock::now();
+        for (size_t i = 0; i < mcgrid.structuredGrid.size(); ++i) {
+            mcgrid.results[i] = hrbf.eval(mcgrid.structuredGrid[i]);
+        }
+        
+        double *resultarray= new double[mcgrid.results.size()];
+        for(int i=0;i<mcgrid.results.size();i++){
+            resultarray[i] = mcgrid.results[i];
+        }
+        
+        ciso->GenerateSurface(resultarray, 0,
+                              mcgrid.subx-1, mcgrid.suby-1, mcgrid.subz-1,
+                              mcgrid.dx, mcgrid.dy, mcgrid.dz);
+        const auto endTime = std::chrono::system_clock::now();
+        const auto timeSpan = endTime - startTime;
+        std::cout << "Marching cube's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+        delete[] resultarray;
+        
+        meshPtr->setData(ciso->m_ppt3dVertices, ciso->m_nVertices,
+                         ciso->m_piTriangleIndices, ciso->m_nTriangles);
+        meshPtr->normalize();
+    }
     return function;
 }
 
-Crbf_function HRBF_closed_reconstruction(std::vector<PointVectorPair>& points,std::vector<Vector3>& points2,std::vector<Vector3>& normals2){
+Crbf_function HRBF_closed_reconstruction(std::vector<PointVectorPair>& points,std::vector<Vector3>& points2,std::vector<Vector3>& normals2,TriMesh* meshPtr){
     std::cout<<"closed rbf mode"<<std::endl;
     double rho = CGAL::compute_average_spacing<Concurrency_tag>(points.begin(), points.end(),CGAL::First_of_pair_property_map<PointVectorPair>(),nb_neighbors2);
     rho = rho * 5;
@@ -961,9 +995,31 @@ Crbf_function HRBF_closed_reconstruction(std::vector<PointVectorPair>& points,st
         pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
     }
     Crbf_function function(crbf);
+    if(mesher==0){
+        const auto startTime = std::chrono::system_clock::now();
+        for (size_t i = 0; i < mcgrid.structuredGrid.size(); ++i) {
+            mcgrid.results[i] = crbf.eval(mcgrid.structuredGrid[i]);
+        }
+        double *resultarray= new double[mcgrid.results.size()];
+        for(unsigned int i=0;i<mcgrid.results.size();i++){
+            resultarray[i] = mcgrid.results[i];
+        }
+        
+        ciso->GenerateSurface(resultarray, 0,
+                              mcgrid.subx-1, mcgrid.suby-1, mcgrid.subz-1,
+                              mcgrid.dx, mcgrid.dy, mcgrid.dz);
+        const auto endTime = std::chrono::system_clock::now();
+        const auto timeSpan = endTime - startTime;
+        std::cout << "Marching cube's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+        delete[] resultarray;
+        
+        meshPtr->setData(ciso->m_ppt3dVertices, ciso->m_nVertices,
+                         ciso->m_piTriangleIndices, ciso->m_nTriangles);
+        meshPtr->normalize();
+    }
     return function;
 }
-Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& points,std::vector<Vector3>& normals){
+Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& points,std::vector<Vector3>& normals,TriMesh* meshPtr){
     std::cout<<"Poisson mode"<<std::endl;
     PointNormalList pwn;
     for (std::size_t i = 0; i < points.size(); ++i) {
@@ -977,6 +1033,34 @@ Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& poi
     function(pwn.begin(), pwn.end(),
              CGAL::make_normal_of_point_with_normal_pmap(PointList::value_type()));
     if (!function.compute_implicit_function())exit(EXIT_FAILURE);
+    if(mesher==0){
+        const auto startTime = std::chrono::system_clock::now();
+        for (size_t i = 0; i < mcgrid.structuredGrid.size(); ++i) {
+            mcgrid.results[i] = function(Point(mcgrid.structuredGrid[i](0),mcgrid.structuredGrid[i](1),mcgrid.structuredGrid[i](2)));
+        }
+        const auto endTime = std::chrono::system_clock::now();
+        const auto timeSpan = endTime - startTime;
+        std::cout << "Marching cube's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+        double *resultarray= new double[mcgrid.results.size()];
+        for(unsigned int i=0;i<mcgrid.results.size();i++){
+            resultarray[i] = mcgrid.results[i];
+        }
+        ciso->GenerateSurface(resultarray, 0,
+                              mcgrid.subx-1, mcgrid.suby-1, mcgrid.subz-1,
+                              mcgrid.dx, mcgrid.dy, mcgrid.dz);
+        /*const auto endTime = std::chrono::system_clock::now();
+        const auto timeSpan = endTime - startTime;
+        std::cout << "Marching cube's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;*/
+        delete[] resultarray;
+        
+        meshPtr->setData(ciso->m_ppt3dVertices, ciso->m_nVertices,
+                         ciso->m_piTriangleIndices, ciso->m_nTriangles);
+        meshPtr->normalize();
+
+
+    }
+    
+    
     return function;
 }
 
@@ -1001,23 +1085,37 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     for(unsigned i=0;i<meshPtr->numVerts();i++){
         Vec3 p_neighbor = meshPtr->getVertPos(i);
         if(deformationSwitch==true){
+            /*
+             distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
+             
+             if(distance>thr)disp=0;
+             else if(changedisp==true)disp=/*-d*exp(-(pow(distance,2)/pow(sigma,2)));-d*exp(-200.0*pow(distance,2));
+             else if(changedisp==false)disp=d*exp(-(pow(distance,2)/pow(sigma,2)));
+             
+             Point p(p_neighbor.x+disp*normal_x,
+             p_neighbor.y+disp*normal_y,
+             p_neighbor.z+disp*normal_z);
+             vertices.push_back(p);
+             if(disp!=0){
+             deformationArea.push_back(p);
+             count++;
+             }
+             Vector tmp(0, 0, 0);
+             points.push_back(std::make_pair(p, tmp));
+             */
+            Vec3 p_neighbor = meshPtr->getVertPos(i);
             distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
             
             if(distance>thr)disp=0;
-            else if(changedisp==true)disp=-d*exp(-(pow(distance,2)/pow(sigma,2)));
-            else if(changedisp==false)disp=d*exp(-(pow(distance,2)/pow(sigma,2)));
+            else if(changedisp==true)disp=-d*exp(-sigma*pow(distance,2));
+            else if(changedisp==false)disp=d*exp(-sigma*pow(distance,2));
             
             Point p(p_neighbor.x+disp*normal_x,
                     p_neighbor.y+disp*normal_y,
                     p_neighbor.z+disp*normal_z);
             vertices.push_back(p);
-            if(disp!=0){
-                deformationArea.push_back(p);
-                count++;
-            }
             Vector tmp(0, 0, 0);
             points.push_back(std::make_pair(p, tmp));
-            
         }
         else{
             Point p(p_neighbor.x,
@@ -1029,7 +1127,6 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         }
         
     }
-    std::cout<<"thr内の点の数"<<count<<std::endl;
     
     CGAL::pca_estimate_normals<Concurrency_tag>(points.begin(), points.end(), CGAL::First_of_pair_property_map<PointVectorPair>(), CGAL::Second_of_pair_property_map<PointVectorPair>(), nb_neighbors);
     
@@ -1059,71 +1156,159 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     }
     
     double averagespacing = CGAL::compute_average_spacing<Concurrency_tag>(points3.begin(), points3.end(),CGAL::Identity_property_map<Point>() ,nb_neighbors2);
-    struct timeval s, e;
-    gettimeofday(&s, NULL);
     
     SurfaceMesh output_mesh;
     
     //HRBF reconstruction
     if(reconstructionValue==0){
-        Hrbf_function function=HRBF_reconstruction(points2,normals2);
-        
-        Delaunay dl;
-        for (std::size_t i = 0; i < points2.size(); ++i) {
-            dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+        Hrbf_function function=HRBF_reconstruction(points2,normals2,meshPtr);
+        if(mesher==1){
+            const auto startTime = std::chrono::system_clock::now();
+            Delaunay dl;
+            for (std::size_t i = 0; i < points2.size(); ++i) {
+                dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+            }
+            Cell_inside<Delaunay, Hrbf_function> cellin(dl, function);
+            Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b(dl, cellin);
+            output_mesh.delegate(b);
+            const auto endTime = std::chrono::system_clock::now();
+            const auto timeSpan = endTime - startTime;
+            std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+            if(resamplingSwitch==1){
+                Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
+                Cell_inside<Delaunay, Hrbf_function> cellin2(dl2, function);
+                Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b2(dl2, cellin2);
+                output_mesh.delegate(b2);
+            }
+
         }
-        Cell_inside<Delaunay, Hrbf_function> cellin(dl, function);
-        Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b(dl, cellin);
-        output_mesh.delegate(b);
-        if(resamplingSwitch==1){
-            Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
-            Cell_inside<Delaunay, Hrbf_function> cellin2(dl2, function);
-            Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b2(dl2, cellin2);
-            output_mesh.delegate(b2);
+        if(mesher==2){
+            const auto startTime = std::chrono::system_clock::now();
+            PointList pt;
+                for(std::size_t i=0;i<points2.size();i++){
+                        pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
+                    }
+            Min_sphere  ms (pt.begin(), pt.end());
+            FT sm_sphere_radius = 5.0 * 5;
+            FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
+            Surface_3_hrbf surface(function,Sphere(ms.center(),ms.squared_radius()*1.5));
+            CGAL::Surface_mesh_default_criteria_3<STr>
+            criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+            STr tr;
+            tr.insert(vertices.begin(), vertices.end());
+            C2t3 c2t3(tr);
+            CGAL::make_surface_mesh(c2t3,surface,criteria,CGAL::Manifold_with_boundary_tag());
+            CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+            const auto endTime = std::chrono::system_clock::now();
+            const auto timeSpan = endTime - startTime;
+            std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
         }
     }
-    
     //HRBF_closed
     else if(reconstructionValue==1){
-        Crbf_function function=HRBF_closed_reconstruction(points,points2,normals2);
-        
-        Delaunay dl;
-        for (std::size_t i = 0; i < points2.size(); ++i) {
-            dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+        Crbf_function function=HRBF_closed_reconstruction(points,points2,normals2,meshPtr);
+        if(mesher==1){
+            const auto startTime = std::chrono::system_clock::now();
+            Delaunay dl;
+            for (std::size_t i = 0; i < points2.size(); ++i) {
+                dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+            }
+            Cell_inside<Delaunay, Crbf_function> cellin(dl, function);
+            Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b(dl, cellin);
+            output_mesh.delegate(b);
+            const auto endTime = std::chrono::system_clock::now();
+            const auto timeSpan = endTime - startTime;
+            std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+            if(resamplingSwitch==1){
+                Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
+                Cell_inside<Delaunay, Crbf_function> cellin2(dl2, function);
+                Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b2(dl2, cellin2);
+                output_mesh.delegate(b2);
+            }
+
         }
-        Cell_inside<Delaunay, Crbf_function> cellin(dl, function);
-        Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b(dl, cellin);
-        output_mesh.delegate(b);
-        if(resamplingSwitch==1){
-            Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
-            Cell_inside<Delaunay, Crbf_function> cellin2(dl2, function);
-            Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b2(dl2, cellin2);
-            output_mesh.delegate(b2);
+        if(mesher==2){
+            const auto startTime = std::chrono::system_clock::now();
+            PointList pt;
+            for(std::size_t i=0;i<points2.size();i++){
+                pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
+            }
+            Min_sphere  ms (pt.begin(), pt.end());
+            FT sm_sphere_radius = 5.0 * 5.0;
+            FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
+            Surface_3_crbf surface(function,Sphere(ms.center(),ms.squared_radius()*1.5));
+            CGAL::Surface_mesh_default_criteria_3<STr>
+            criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+            STr tr;
+            tr.insert(vertices.begin(), vertices.end());
+            C2t3 c2t3(tr);
+            CGAL::make_surface_mesh(c2t3,surface,criteria,CGAL::Manifold_with_boundary_tag());
+            CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+            const auto endTime = std::chrono::system_clock::now();
+            const auto timeSpan = endTime - startTime;
+            std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
         }
     }
     
     // Poisson reconstruction
     else if(reconstructionValue==2){
-        Poisson_reconstruction_function function=Poisson_reconstruction(points2,normals2);
-        Delaunay dl;
-        for (std::size_t i = 0; i < points2.size(); ++i) {
-            dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+        Poisson_reconstruction_function function=Poisson_reconstruction(points2,normals2,meshPtr);
+        if(mesher==1){
+            const auto startTime = std::chrono::system_clock::now();
+            Delaunay dl;
+            for (std::size_t i = 0; i < points2.size(); ++i) {
+                dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+            }
+            const auto endTime = std::chrono::system_clock::now();
+            const auto timeSpan = endTime - startTime;
+            std::cout << "Delaunay's time1:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+            const auto startTime2 = std::chrono::system_clock::now();
+            Cell_inside<Delaunay, Poisson_reconstruction_function> cellin(dl, function);
+            Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b(dl, cellin);
+            output_mesh.delegate(b);
+            const auto endTime2 = std::chrono::system_clock::now();
+            const auto timeSpan2 = endTime2 - startTime2;
+            std::cout << "Delaunay's time2:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan2).count() << "[ms]" << std::endl;
+            if(resamplingSwitch==1){
+                Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
+                Cell_inside<Delaunay, Poisson_reconstruction_function> cellin2(dl2, function);
+                Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b2(dl2, cellin2);
+                output_mesh.delegate(b2);
+            }
         }
-        Cell_inside<Delaunay, Poisson_reconstruction_function> cellin(dl, function);
-        Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b(dl, cellin);
-        output_mesh.delegate(b);
-        if(resamplingSwitch==1){
-            Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
-            Cell_inside<Delaunay, Poisson_reconstruction_function> cellin2(dl2, function);
-            Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b2(dl2, cellin2);
-            output_mesh.delegate(b2);
+        if(mesher==2){
+            const auto startTime = std::chrono::system_clock::now();
+            Point inner_point = function.get_inner_point();
+            Sphere bsphere = function.bounding_sphere();
+            FT radius = std::sqrt(bsphere.squared_radius());
+            
+            FT sm_sphere_radius = 5.0 * radius;
+            FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
+            Surface_3 surface(function,
+                              Sphere(inner_point,sm_sphere_radius*sm_sphere_radius),
+                              sm_dichotomy_error/sm_sphere_radius);
+            
+            CGAL::Surface_mesh_default_criteria_3<STr>
+            criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+            
+            STr tr;
+            tr.insert(vertices.begin(), vertices.end());
+            C2t3 c2t3(tr);
+            CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
+                                    surface,  // implicit surface
+                                    criteria, // meshing criteria
+                                    CGAL::Manifold_with_boundary_tag());  // require manifold mesh
+            CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+            const auto endTime = std::chrono::system_clock::now();
+            const auto timeSpan = endTime - startTime;
+            std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
         }
     }
-    
-    createOBJFile("out.obj",output_mesh);
-    setMeshFromPolyhedron(output_mesh, meshPtr);
-    gettimeofday(&e, NULL);
-    printf("time = %lf\n", (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6);
+    if(mesher==1||mesher==2){
+        createOBJFile("out.obj",output_mesh);
+        setMeshFromPolyhedron(output_mesh, meshPtr);
+    }
+
     
     std::cout<<"drawed"<<std::endl;
 }

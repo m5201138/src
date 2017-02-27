@@ -283,6 +283,8 @@ Image.h
 /Users/m5201138/src/Image.h
 TriMesh.h
 /Users/m5201138/src/TriMesh.h
+chrono
+-
 GLUT/glut.h
 -
 OpenGL/gl.h

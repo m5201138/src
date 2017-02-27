@@ -18,7 +18,6 @@ typedef Eigen::Matrix<double,3,1> Vector3;
      implicit_function_crbf(HRBF_closed c){
          crbf=c;
      }
-     
      FT operator()(Point p) const{
      Vector3 pt(CGAL::to_double(p.x()),CGAL::to_double(p.y()),CGAL::to_double(p.z()));
          return crbf.eval(pt);
