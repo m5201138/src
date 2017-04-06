@@ -8,6 +8,6 @@ sm_radius 5.0
 sm_distance 0.15
 resampling(off=0,on=1) 0
 mesher(marching=0,OurDelaunay=1,CGAL’sDelaunay=2) 1
-gridsize 128
-
+gridsize 250
+Cell_inside_value -0.001
 

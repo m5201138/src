@@ -147,6 +147,7 @@ FT sm_sphere_radius;
 int resamplingSwitch;
 int mesher;
 int gridsize;
+double cellInsideValue;
 
 // Precompute and keep the grids used by MC algorithm
 struct MCGrid {
@@ -774,6 +775,15 @@ void createOBJFile(const std::string& outFileName, SurfaceMesh& output_mesh){
     }
 }
 
+void createOBJFile_marching(const std::string& outFileName){
+    std::ofstream out(outFileName.c_str());
+    for(unsigned int i=0;i<ciso->m_nVertices;i++){
+        out<<"v "<<ciso->m_ppt3dVertices[i][0]<<" "<<ciso->m_ppt3dVertices[i][1]<<" "<<ciso->m_ppt3dVertices[i][2]<<std::endl;
+    }
+    for(unsigned int i=0;i<ciso->m_nTriangles;i++){
+        out<<"f"<<" "<<ciso->m_piTriangleIndices[i*3]<<" "<<ciso->m_piTriangleIndices[i*3+1]<<" "<<ciso->m_piTriangleIndices[i*3+2]<<std::endl;
+    }
+}
 
 
 static void
@@ -883,6 +893,10 @@ void Viewer::read(const char* filename){
             ss>>gridsize;
             continue;
         }
+        if(token=="Cell_inside_value"){
+            ss>>cellInsideValue;
+            continue;
+        }
     }
     
     in.close();
@@ -957,6 +971,7 @@ Hrbf_function HRBF_reconstruction(std::vector<Vector3>& points,std::vector<Vecto
     Hrbf_function function(hrbf);
     if(mesher==0){
         const auto startTime = std::chrono::system_clock::now();
+         std::cout<<"Marching start"<<std::endl;
         for (size_t i = 0; i < mcgrid.structuredGrid.size(); ++i) {
             mcgrid.results[i] = hrbf.eval(mcgrid.structuredGrid[i]);
         }
@@ -977,6 +992,8 @@ Hrbf_function HRBF_reconstruction(std::vector<Vector3>& points,std::vector<Vecto
         meshPtr->setData(ciso->m_ppt3dVertices, ciso->m_nVertices,
                          ciso->m_piTriangleIndices, ciso->m_nTriangles);
         meshPtr->normalize();
+        createOFFFile2("out.off");
+        //createOBJFile_marching("out.obj");
     }
     return function;
 }
@@ -997,6 +1014,7 @@ Crbf_function HRBF_closed_reconstruction(std::vector<PointVectorPair>& points,st
     Crbf_function function(crbf);
     if(mesher==0){
         const auto startTime = std::chrono::system_clock::now();
+         std::cout<<"Marching start"<<std::endl;
         for (size_t i = 0; i < mcgrid.structuredGrid.size(); ++i) {
             mcgrid.results[i] = crbf.eval(mcgrid.structuredGrid[i]);
         }
@@ -1016,6 +1034,8 @@ Crbf_function HRBF_closed_reconstruction(std::vector<PointVectorPair>& points,st
         meshPtr->setData(ciso->m_ppt3dVertices, ciso->m_nVertices,
                          ciso->m_piTriangleIndices, ciso->m_nTriangles);
         meshPtr->normalize();
+        createOFFFile2("out.off");
+        //createOBJFile_marching("out.obj");
     }
     return function;
 }
@@ -1035,6 +1055,7 @@ Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& poi
     if (!function.compute_implicit_function())exit(EXIT_FAILURE);
     if(mesher==0){
         const auto startTime = std::chrono::system_clock::now();
+        std::cout<<"Marching start"<<std::endl;
         for (size_t i = 0; i < mcgrid.structuredGrid.size(); ++i) {
             mcgrid.results[i] = function(Point(mcgrid.structuredGrid[i](0),mcgrid.structuredGrid[i](1),mcgrid.structuredGrid[i](2)));
         }
@@ -1056,7 +1077,9 @@ Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& poi
         meshPtr->setData(ciso->m_ppt3dVertices, ciso->m_nVertices,
                          ciso->m_piTriangleIndices, ciso->m_nTriangles);
         meshPtr->normalize();
-
+        
+        createOFFFile2("out.off");
+        //createOBJFile_marching("out.obj");
 
     }
     
@@ -1164,11 +1187,12 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         Hrbf_function function=HRBF_reconstruction(points2,normals2,meshPtr);
         if(mesher==1){
             const auto startTime = std::chrono::system_clock::now();
+            std::cout<<"Our delaunay start"<<std::endl;
             Delaunay dl;
             for (std::size_t i = 0; i < points2.size(); ++i) {
                 dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
             }
-            Cell_inside<Delaunay, Hrbf_function> cellin(dl, function);
+            Cell_inside<Delaunay, Hrbf_function> cellin(dl, function,cellInsideValue);
             Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b(dl, cellin);
             output_mesh.delegate(b);
             const auto endTime = std::chrono::system_clock::now();
@@ -1176,7 +1200,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
             std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
             if(resamplingSwitch==1){
                 Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
-                Cell_inside<Delaunay, Hrbf_function> cellin2(dl2, function);
+                Cell_inside<Delaunay, Hrbf_function> cellin2(dl2, function,cellInsideValue);
                 Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b2(dl2, cellin2);
                 output_mesh.delegate(b2);
             }
@@ -1184,6 +1208,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         }
         if(mesher==2){
             const auto startTime = std::chrono::system_clock::now();
+            std::cout<<"CGAL's delaunay start"<<std::endl;
             PointList pt;
                 for(std::size_t i=0;i<points2.size();i++){
                         pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
@@ -1209,11 +1234,12 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         Crbf_function function=HRBF_closed_reconstruction(points,points2,normals2,meshPtr);
         if(mesher==1){
             const auto startTime = std::chrono::system_clock::now();
+            std::cout<<"Our delaunay start"<<std::endl;
             Delaunay dl;
             for (std::size_t i = 0; i < points2.size(); ++i) {
                 dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
             }
-            Cell_inside<Delaunay, Crbf_function> cellin(dl, function);
+            Cell_inside<Delaunay, Crbf_function> cellin(dl, function,cellInsideValue);
             Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b(dl, cellin);
             output_mesh.delegate(b);
             const auto endTime = std::chrono::system_clock::now();
@@ -1221,7 +1247,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
             std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
             if(resamplingSwitch==1){
                 Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
-                Cell_inside<Delaunay, Crbf_function> cellin2(dl2, function);
+                Cell_inside<Delaunay, Crbf_function> cellin2(dl2, function,cellInsideValue);
                 Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b2(dl2, cellin2);
                 output_mesh.delegate(b2);
             }
@@ -1229,6 +1255,7 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         }
         if(mesher==2){
             const auto startTime = std::chrono::system_clock::now();
+            std::cout<<"CGAL's delaunay start"<<std::endl;
             PointList pt;
             for(std::size_t i=0;i<points2.size();i++){
                 pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
@@ -1255,29 +1282,27 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         Poisson_reconstruction_function function=Poisson_reconstruction(points2,normals2,meshPtr);
         if(mesher==1){
             const auto startTime = std::chrono::system_clock::now();
+            std::cout<<"Our delaunay start"<<std::endl;
             Delaunay dl;
             for (std::size_t i = 0; i < points2.size(); ++i) {
                 dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
             }
-            const auto endTime = std::chrono::system_clock::now();
-            const auto timeSpan = endTime - startTime;
-            std::cout << "Delaunay's time1:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
-            const auto startTime2 = std::chrono::system_clock::now();
-            Cell_inside<Delaunay, Poisson_reconstruction_function> cellin(dl, function);
+            Cell_inside<Delaunay, Poisson_reconstruction_function> cellin(dl, function,cellInsideValue);
             Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b(dl, cellin);
             output_mesh.delegate(b);
-            const auto endTime2 = std::chrono::system_clock::now();
-            const auto timeSpan2 = endTime2 - startTime2;
-            std::cout << "Delaunay's time2:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan2).count() << "[ms]" << std::endl;
+            const auto endTime = std::chrono::system_clock::now();
+            const auto timeSpan = endTime - startTime;
+            std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
             if(resamplingSwitch==1){
                 Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
-                Cell_inside<Delaunay, Poisson_reconstruction_function> cellin2(dl2, function);
+                Cell_inside<Delaunay, Poisson_reconstruction_function> cellin2(dl2, function,cellInsideValue);
                 Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b2(dl2, cellin2);
                 output_mesh.delegate(b2);
             }
         }
         if(mesher==2){
             const auto startTime = std::chrono::system_clock::now();
+            std::cout<<"CGAL's delaunay start"<<std::endl;
             Point inner_point = function.get_inner_point();
             Sphere bsphere = function.bounding_sphere();
             FT radius = std::sqrt(bsphere.squared_radius());

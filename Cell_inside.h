@@ -16,10 +16,11 @@ class Cell_inside {
  private:
   Function fun;
   Triangulation& tr;
+  double thr;
   
  public:
-  Cell_inside(Triangulation& t, Function& f)
-      : tr(t), fun(f) {}
+  Cell_inside(Triangulation& t, Function& f,double th)
+      : tr(t), fun(f) ,thr(th){}
 
   bool operator()(Cell_handle& cell_handle) {
     if (tr.is_infinite(cell_handle))
@@ -28,7 +29,7 @@ class Cell_inside {
     Tetrahedron tet = tr.tetrahedron(cell_handle);
     Point centroid = CGAL::centroid(tet);
     double f = fun(centroid);
-      return f <1.0;//0.0;
+      return f <thr;//0.0;
   }
 };
 
