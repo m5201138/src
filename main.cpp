@@ -47,6 +47,8 @@ int main(int argc, char** argv)
 
     TriMesh* mesh=new TriMesh;
     mesh->read(meshFile);
+    mesh->createOFFFile("mesh.off");
+    mesh->segmentation();
     mesh->normalize();
         
     Viewer viewer;

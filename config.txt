@@ -7,7 +7,7 @@ sm_angle 20.0
 sm_radius 5.0
 sm_distance 0.15
 resampling(off=0,on=1) 0
-mesher(marching=0,OurDelaunay=1,CGAL’sDelaunay=2) 1
-gridsize 250
+mesher(marching=0,OurDelaunay=1,CGAL’sDelaunay=2) 2
+gridsize 48
 Cell_inside_value -0.001
-
+bounding_box_size 0.94
