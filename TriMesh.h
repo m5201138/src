@@ -13,7 +13,6 @@
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef Kernel::Point_3 Point;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
-
 class TriMesh
 {
 public:
@@ -62,6 +61,10 @@ public:
     int getSegmentNumberForPoint(Point p){return segmentedPointMap[p];}
     void replacePoints(std::vector<Vec3>& points){mPoints=points;}
     void makeMap();
+    void replacePolyhedron();
+    Polyhedron getPolyhedron(){return mesh;}
+    //void takeUnitPolyhedron();
+    //void setMeshFromPolyhedron();
 
 private:
     
@@ -72,7 +75,7 @@ private:
     std::map<Point,int> segmentedPointMap;
     std::size_t number_of_segments;
     std::vector<int> segmentNumbers;
-
+    Polyhedron mesh;
 };
 
 #endif // TRIMESH_H

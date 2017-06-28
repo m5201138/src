@@ -4,6 +4,8 @@
 #include "Viewer.h"
 #include "TriMesh.h"
 
+
+
 bool parseCmdLine(int argc, char** argv, 
                   char* & meshFile, 
                   double& scale,
@@ -37,6 +39,23 @@ bool parseCmdLine(int argc, char** argv,
 
     return meshFile;
 }
+void fill_cube_1(Polyhedron& poly)
+{
+    std::ifstream input("out.off");
+    if ( !input || !(input >> poly) || poly.empty() ) {
+        std::cerr << "Not a valid off file." << std::endl;
+        //  return EXIT_FAILURE;
+    }
+}
+void fill_cube_2(Polyhedron& poly)
+{
+    std::ifstream input("meshForReplacePolyhedron.off");
+    if ( !input || !(input >> poly) || poly.empty() ) {
+        std::cerr << "Not a valid off file." << std::endl;
+        //  return EXIT_FAILURE;
+    }
+    
+}
 
 int main(int argc, char** argv)
 {
@@ -57,5 +76,6 @@ int main(int argc, char** argv)
     viewer.verbose = verbose;
     viewer.clearData();
     viewer.init(argc,argv);
+    
     return 1;
 }

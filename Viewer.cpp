@@ -1,10 +1,13 @@
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+
 #include <CGAL/pca_estimate_normals.h>
 #include <CGAL/mst_orient_normals.h>
 #include <CGAL/property_map.h>
 #include <map>
 #include <sys/time.h>
 #include <eigen/Eigen/Core>
+#include <cmath>
 
 #include "hrbf_core.h"
 #include "hrbf_phi_funcs.h"
@@ -16,6 +19,7 @@
 #include "Build_surface.h"
 #include "Cell_inside.h"
 #include "Surface_builder.h"
+//#include "takeUnitPolyhedron.h"
 #include <utility>
 #include <fstream>
 
@@ -46,7 +50,7 @@
 
 #include <CGAL/Polygon_mesh_processing/refine.h>
 #include <CGAL/mesh_segmentation.h>
-
+#include <CGAL/Nef_polyhedron_3.h>
 
 #include <cstdlib>
 #include <iostream>
@@ -92,6 +96,7 @@ Camera Viewer::camera;
 
 //added
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+typedef CGAL::Exact_predicates_exact_constructions_kernel exact_Kernel;
 //typedef CGAL::Cartesian<double> Kernel;
 typedef Kernel::Point_3 Point;
 typedef Kernel::Vector_3 Vector;
@@ -105,6 +110,8 @@ typedef CGAL::Surface_mesh_complex_2_in_triangulation_3<STr> C2t3;
 typedef Kernel::Sphere_3 Sphere;
 typedef CGAL::Implicit_surface_3<Kernel, Poisson_reconstruction_function> Surface_3;
 typedef CGAL::Polyhedron_3<Kernel> SurfaceMesh;
+typedef CGAL::Polyhedron_3<exact_Kernel> Polyhedron2;
+typedef CGAL::Nef_polyhedron_3<exact_Kernel> Nef_polyhedron;
 typedef CGAL::Point_with_normal_3<Kernel> Point_with_normal_3;
 typedef std::vector<Point_with_normal_3> PointNormalList;
 typedef std::vector<Point> PointList;
@@ -819,7 +826,6 @@ void createOBJFile_marching(const std::string& outFileName){
     }
 }
 
-
 static void
 setMeshFromPolyhedron(SurfaceMesh& output_mesh,
                       TriMesh* meshPtr)
@@ -827,6 +833,50 @@ setMeshFromPolyhedron(SurfaceMesh& output_mesh,
     typedef typename SurfaceMesh::Vertex_const_iterator VCI;
     typedef typename SurfaceMesh::Facet_const_iterator FCI;
     typedef typename SurfaceMesh::Halfedge_around_facet_const_circulator HFCC;
+    
+    std::vector<Vec3> vertices;
+    std::vector< std::vector<unsigned> > faces;
+    
+    for (VCI vi = output_mesh.vertices_begin();
+         vi != output_mesh.vertices_end();
+         ++vi)
+    {
+        Vec3 v(CGAL::to_double(vi->point().x()),
+               CGAL::to_double(vi->point().y()),
+               CGAL::to_double(vi->point().z()));
+        vertices.push_back(v);
+    }
+    
+    typedef CGAL::Inverse_index<VCI> Index;
+    Index index(output_mesh.vertices_begin(), output_mesh.vertices_end());
+    
+    for (FCI fi = output_mesh.facets_begin();
+         fi != output_mesh.facets_end();
+         ++fi)
+    {
+        HFCC hc = fi->facet_begin();
+        HFCC hc_end = hc;
+        std::vector<unsigned> f;
+        do {
+            f.push_back(index[VCI(hc->vertex())]);
+            ++hc;
+        } while(hc != hc_end);
+        
+        faces.push_back(f);
+    }
+    std::cout << "# of vertices and faces: " << std::endl;
+    std::cout << vertices.size() << std::endl;
+    std::cout << faces.size() << std::endl;
+    
+    meshPtr->setData(vertices, faces);
+    meshPtr->normalize();
+}
+static void
+setMeshFromPolyhedron(Polyhedron2& output_mesh,TriMesh* meshPtr)
+{
+    typedef typename Polyhedron2::Vertex_const_iterator VCI;
+    typedef typename Polyhedron2::Facet_const_iterator FCI;
+    typedef typename Polyhedron2::Halfedge_around_facet_const_circulator HFCC;
     
     std::vector<Vec3> vertices;
     std::vector< std::vector<unsigned> > faces;
@@ -983,9 +1033,9 @@ Delaunay resampling(SurfaceMesh& output_mesh,TriMesh* meshPtr,double length,Dela
     double dist2;
     for(std::size_t i=0;i<vertices.size();i++){
         
-        dist0=sqrt(pow(vertices[faces[i][0]].x-vertices[faces[i][1]].x,2)+pow(vertices[faces[i][0]].y-vertices[faces[i][1]].y,2)+pow(vertices[faces[i][0]].z-vertices[faces[i][1]].z,2));
-        dist1=sqrt(pow(vertices[faces[i][1]].x-vertices[faces[i][2]].x,2)+pow(vertices[faces[i][1]].y-vertices[faces[i][2]].y,2)+pow(vertices[faces[i][1]].z-vertices[faces[i][2]].z,2));
-        dist2=sqrt(pow(vertices[faces[i][2]].x-vertices[faces[i][0]].x,2)+pow(vertices[faces[i][2]].y-vertices[faces[i][0]].y,2)+pow(vertices[faces[i][2]].z-vertices[faces[i][0]].z,2));
+        dist0=sqrt(std::pow(vertices[faces[i][0]].x-vertices[faces[i][1]].x,2)+std::pow(vertices[faces[i][0]].y-vertices[faces[i][1]].y,2)+std::pow(vertices[faces[i][0]].z-vertices[faces[i][1]].z,2));
+        dist1=sqrt(pow(vertices[faces[i][1]].x-vertices[faces[i][2]].x,2)+std::pow(vertices[faces[i][1]].y-vertices[faces[i][2]].y,2)+std::pow(vertices[faces[i][1]].z-vertices[faces[i][2]].z,2));
+        dist2=sqrt(std::pow(vertices[faces[i][2]].x-vertices[faces[i][0]].x,2)+std::pow(vertices[faces[i][2]].y-vertices[faces[i][0]].y,2)+std::pow(vertices[faces[i][2]].z-vertices[faces[i][0]].z,2));
         if(dist0>length||dist1>length||dist2>length){
             pointX=vertices[faces[i][0]].x+vertices[faces[i][1]].x+vertices[faces[i][2]].x/3;
             pointY=vertices[faces[i][0]].y+vertices[faces[i][1]].y+vertices[faces[i][2]].y/3;
@@ -1040,7 +1090,7 @@ Hrbf_function HRBF_reconstruction(std::vector<Vector3>& points,std::vector<Vecto
 
 Crbf_function HRBF_closed_reconstruction(std::vector<PointVectorPair>& points,std::vector<Vector3>& points2,std::vector<Vector3>& normals2,TriMesh* meshPtr){
     std::cout<<"closed rbf mode"<<std::endl;
-    double rho = CGAL::compute_average_spacing<Concurrency_tag>(points.begin(), points.end(),CGAL::First_of_pair_property_map<PointVectorPair>(),nb_neighbors2);
+    double rho = CGAL::to_double(CGAL::compute_average_spacing<Concurrency_tag>(points.begin(), points.end(),CGAL::First_of_pair_property_map<PointVectorPair>(),nb_neighbors2));
     rho = rho * 5;
     double eta = 50.0 / (rho*rho);
     std::cout << "eta: " << eta << " ; rho: " << rho << std::endl;
@@ -1097,7 +1147,7 @@ Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& poi
         const auto startTime = std::chrono::system_clock::now();
         std::cout<<"Marching start"<<std::endl;
         for (size_t i = 0; i < mcgrid.structuredGrid.size(); ++i) {
-            mcgrid.results[i] = function(Point(mcgrid.structuredGrid[i](0),mcgrid.structuredGrid[i](1),mcgrid.structuredGrid[i](2)));
+            mcgrid.results[i] = CGAL::to_double(function(Point(mcgrid.structuredGrid[i](0),mcgrid.structuredGrid[i](1),mcgrid.structuredGrid[i](2))));
             std::cout<<"marching "<<mcgrid.results[i]<<std::endl;
         }
         const auto endTime = std::chrono::system_clock::now();
@@ -1127,6 +1177,42 @@ Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& poi
     
     return function;
 }
+
+void fill_poly_1(Polyhedron2& poly)
+{
+    std::ifstream input("out.off");
+    if ( !input || !(input >> poly) || poly.empty() ) {
+        std::cerr << "Not a valid off file." << std::endl;
+        //  return EXIT_FAILURE;
+    }
+}
+void fill_poly_2(Polyhedron2& poly)
+{
+    std::ifstream input("meshForReplacePolyhedron.off");
+    if ( !input || !(input >> poly) || poly.empty() ) {
+        std::cerr << "Not a valid off file." << std::endl;
+        //  return EXIT_FAILURE;
+    }
+    
+}
+
+Polyhedron2 takeUnitPolyhedron(){
+        Polyhedron2 poly1,poly2,outpoly;
+        fill_poly_1(poly1);
+        fill_poly_2(poly2);
+        Nef_polyhedron nef1(poly1);
+        Nef_polyhedron nef2(poly2);
+        Nef_polyhedron nef=nef1+nef2;
+    if(nef.is_simple()) {
+        nef.convert_to_polyhedron(outpoly);
+    }
+    else
+        std::cerr << "N1 is not a 2-manifold." << std::endl;
+    return outpoly;
+}
+
+
+    
 
 
 void
@@ -1172,11 +1258,11 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
      }
     for(auto itr=set.begin();itr!=set.end();itr++){
         if(deformationSwitch==true){
-            distance=sqrt(pow((selected_x-itr->x()),2)+pow((selected_y-itr->y()),2)+pow((selected_z-itr->z()),2));
+            distance=sqrt(std::pow((selected_x-itr->x()),2)+std::pow((selected_y-itr->y()),2)+std::pow((selected_z-itr->z()),2));
             
             if(distance>thr)disp=0;
-            else if(changedisp==true)disp=-d*exp(-sigma*pow(distance,2));
-            else if(changedisp==false)disp=d*exp(-sigma*pow(distance,2));
+            else if(changedisp==true)disp=-d*exp(-sigma*std::pow(distance,2));
+            else if(changedisp==false)disp=d*exp(-sigma*std::pow(distance,2));
             
             Point p(itr->x()+disp*normal_x,
                     itr->y()+disp*normal_y,
@@ -1425,7 +1511,9 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         if(mesher==1||mesher==2){
             createOBJFile("out.obj",output_mesh);
             createOFFFileForPolyhedron("out.off",output_mesh);
-            setMeshFromPolyhedron(output_mesh, meshPtr);
+            Polyhedron2 outpoly;
+           outpoly=takeUnitPolyhedron();
+            setMeshFromPolyhedron(outpoly, meshPtr);
         }
         
         

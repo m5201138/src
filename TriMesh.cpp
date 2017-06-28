@@ -19,7 +19,6 @@
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef Kernel::Point_3 Point;
-
 void TriMesh::getFaceVerts(unsigned face, std::vector<unsigned>& verts) const
 {
     verts = mFaceToVert[face];
@@ -241,7 +240,7 @@ void TriMesh::createOFFFile(const std::string& outFileName)
 
 void TriMesh::segmentation(void){
     normalize();
-    Polyhedron mesh;
+    //Polyhedron mesh;
     std::ifstream input("mesh.off");
     if ( !input || !(input >> mesh) || mesh.empty() ) {
         std::cerr << "Not a valid off file." << std::endl;
@@ -360,6 +359,87 @@ void TriMesh::makeMap(){
         segmentedPointMultimap.insert(std::make_pair(segmentNumbers[i],Point(mPoints[i].x,mPoints[i].y,mPoints[i].z)));
         segmentedPointMap.insert(std::make_pair(Point(mPoints[i].x,mPoints[i].y,mPoints[i].z),segmentNumbers[i]));
     }
+    replacePolyhedron();
 }
+
+void TriMesh::replacePolyhedron(){
+    mesh.clear();
+    createOFFFile("meshForReplacePolyhedron.off");
+    std::ifstream input("meshForReplacePolyhedron.off");
+    if ( !input || !(input >> mesh) || mesh.empty() ) {
+        std::cerr << "Not a valid off file." << std::endl;
+    }
+    
+}
+/*
+void fill_cube_1(Polyhedron2& poly)
+{
+    std::ifstream input("out.off");
+    if ( !input || !(input >> poly) || poly.empty() ) {
+        std::cerr << "Not a valid off file." << std::endl;
+        //  return EXIT_FAILURE;
+    }
+}
+void fill_cube_2(Polyhedron2& poly)
+{
+    std::ifstream input("meshForReplacePolyhedron.off");
+    if ( !input || !(input >> poly) || poly.empty() ) {
+        std::cerr << "Not a valid off file." << std::endl;
+        //  return EXIT_FAILURE;
+    }
+    
+}
+
+void TriMesh::setMeshFromPolyhedron(){
+    typedef typename Polyhedron2::Vertex_const_iterator VCI;
+    typedef typename Polyhedron2::Facet_const_iterator FCI;
+    typedef typename Polyhedron2::Halfedge_around_facet_const_circulator HFCC;
+    
+    std::vector<Vec3> vertices;
+    std::vector< std::vector<unsigned> > faces;
+    
+    for (VCI vi = mesh2.vertices_begin();
+         vi != mesh2.vertices_end();
+         ++vi)
+    {
+        Vec3 v(CGAL::to_double(vi->point().x()),
+               CGAL::to_double(vi->point().y()),
+               CGAL::to_double(vi->point().z()));
+        vertices.push_back(v);
+    }
+    
+    typedef CGAL::Inverse_index<VCI> Index;
+    Index index(mesh2.vertices_begin(), mesh2.vertices_end());
+    
+    for (FCI fi = mesh2.facets_begin();
+         fi != mesh2.facets_end();
+         ++fi)
+    {
+        HFCC hc = fi->facet_begin();
+        HFCC hc_end = hc;
+        std::vector<unsigned> f;
+        do {
+            f.push_back(index[VCI(hc->vertex())]);
+            ++hc;
+        } while(hc != hc_end);
+        
+        faces.push_back(f);
+    }
+    setData(vertices, faces);
+}
+void TriMesh::takeUnitPolyhedron(){
+    Polyhedron2 cube1, cube2;
+    fill_cube_1(cube1);
+    fill_cube_2(cube2);
+
+    std::cout<<"-----------------test-------------"<<std::endl;
+   // Nef_polyhedron nef1(cube1);
+  Nef_polyhedron nef2(cube2);
+     //Nef_polyhedron nef=nef1+nef2;
+    //nef.convert_to_polyhedron(mesh2);
+    //setMeshFromPolyhedron();
+}
+*/
+
 
 

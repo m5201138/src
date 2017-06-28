@@ -6,6 +6,13 @@
 #include "types.h"
 #include "TriMesh.h"
 #include <set>
+#include <CGAL/Polyhedron_3.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+//#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+
+
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+
 
 class Viewer
 {
