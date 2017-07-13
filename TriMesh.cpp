@@ -280,11 +280,11 @@ void TriMesh::segmentation(void){
         HFCC hc = fi->facet_begin();
         HFCC hc_end = hc;
         out<<"3";
+        segmentNumbers.push_back(segment_property_map[fi]);
         do {
             out<<" ";
             out<<index[VCI(hc->vertex())];
-            segmentNumbers.push_back(segment_property_map[fi]);
-            /*segmentedPointMultimap.insert(std::make_pair(segment_property_map[fi],Point(hc->vertex()->point().x(),hc->vertex()->point().y(),hc->vertex()->point().z())));
+                        /*segmentedPointMultimap.insert(std::make_pair(segment_property_map[fi],Point(hc->vertex()->point().x(),hc->vertex()->point().y(),hc->vertex()->point().z())));
              segmentedPointMap.insert(std::make_pair(Point(hc->vertex()->point().x(),hc->vertex()->point().y(),hc->vertex()->point().z()),segment_property_map[fi]));*/
             ++hc;
         } while(hc != hc_end);
@@ -355,11 +355,18 @@ void TriMesh::segmentation(void){
 
 
 void TriMesh::makeMap(){
-    for (int i=0;i<mPoints.size();i++){
-        segmentedPointMultimap.insert(std::make_pair(segmentNumbers[i],Point(mPoints[i].x,mPoints[i].y,mPoints[i].z)));
-        segmentedPointMap.insert(std::make_pair(Point(mPoints[i].x,mPoints[i].y,mPoints[i].z),segmentNumbers[i]));
+    for (int i=0;i<numFaces();i++){
+        for(int j=0;j<3;j++){
+             segmentedPointMap.insert(std::make_pair(Point(mPoints[mFaceToVert[i][j]].x,mPoints[mFaceToVert[i][j]].y,mPoints[mFaceToVert[i][j]].z),segmentNumbers[i]));
+            segmentedPointMultimap.insert(std::make_pair(segmentNumbers[i],Point(mPoints[mFaceToVert[i][j]].x,mPoints[mFaceToVert[i][j]].y,mPoints[mFaceToVert[i][j]].z)));
+
+        }
     }
-    replacePolyhedron();
+    for(auto itr = segmentedPointMap.begin(); itr != segmentedPointMap.end(); ++itr) {
+        std::cout << "key = " << itr->first           // キーを表示
+        << ", val = " << itr->second << "\n";    // 値を表示
+    }
+                replacePolyhedron();
 }
 
 void TriMesh::replacePolyhedron(){

@@ -58,8 +58,20 @@ public:
     void segmentation(void);
     int returnNumber_of_segments(){return number_of_segments;}
     int Numcolors(){return colors.size();}
-    int getSegmentNumberForPoint(Point p){return segmentedPointMap[p];}
-    void replacePoints(std::vector<Vec3>& points){mPoints=points;}
+    int getSegmentNumberForPoint(Point p){
+        auto itr = segmentedPointMap.find(p);
+        if( itr != segmentedPointMap.end() ) {
+            return itr->second;
+        } else {
+            std::cout<<"Not found point"<<std::endl;
+            return 0;
+        }
+    }
+    void replacePoints(std::vector<Vec3>& points)
+    {
+        mPoints.clear();
+        mPoints=points;
+    }
     void makeMap();
     void replacePolyhedron();
     Polyhedron getPolyhedron(){return mesh;}

@@ -1198,8 +1198,10 @@ void fill_poly_2(Polyhedron2& poly)
 
 Polyhedron2 takeUnitPolyhedron(){
         Polyhedron2 poly1,poly2,outpoly;
+    
         fill_poly_1(poly1);
         fill_poly_2(poly2);
+
         Nef_polyhedron nef1(poly1);
         Nef_polyhedron nef2(poly2);
         Nef_polyhedron nef=nef1+nef2;
