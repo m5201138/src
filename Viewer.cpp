@@ -502,11 +502,11 @@ Viewer::drawPolygons()
             Vec3 p = meshPtr->getVertPos(vert);
             if (!renderWireframe) glNormal3d(vertNormal[vert].x,vertNormal[vert].y, vertNormal[vert].z);
             if(segmentedColor==true){
-              glColor3d(meshPtr->colors[face*3], meshPtr->colors[face*3+1], meshPtr->colors[face*3+2]);
+                glColor3d(meshPtr->colors[face*3], meshPtr->colors[face*3+1], meshPtr->colors[face*3+2]);
             }
             else{
-            double alpha = 0.5;
-            glColor3d(alpha, alpha, alpha);
+                double alpha = 0.5;
+                glColor3d(alpha, alpha, alpha);
             }
             glVertex3d(p.x, p.y, p.z);
         }
@@ -1133,12 +1133,13 @@ Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& poi
     std::cout<<"Poisson mode"<<std::endl;
     PointNormalList pwn;
     for (std::size_t i = 0; i < points.size(); ++i) {
+
         Point pt(points[i][0], points[i][1], points[i][2]);
         Vector nm(normals[i][0], normals[i][1], normals[i][2]);
         Point_with_normal_3 pn(pt, nm);
         pwn.push_back(pn);
     }
-    
+
     Poisson_reconstruction_function
     function(pwn.begin(), pwn.end(),
              CGAL::make_normal_of_point_with_normal_pmap(PointList::value_type()));
@@ -1174,7 +1175,6 @@ Poisson_reconstruction_function Poisson_reconstruction(std::vector<Vector3>& poi
         
     }
     
-    
     return function;
 }
 
@@ -1197,14 +1197,14 @@ void fill_poly_2(Polyhedron2& poly)
 }
 
 Polyhedron2 takeUnitPolyhedron(){
-        Polyhedron2 poly1,poly2,outpoly;
+    Polyhedron2 poly1,poly2,outpoly;
     
-        fill_poly_1(poly1);
-        fill_poly_2(poly2);
-
-        Nef_polyhedron nef1(poly1);
-        Nef_polyhedron nef2(poly2);
-        Nef_polyhedron nef=nef1+nef2;
+    fill_poly_1(poly1);
+    fill_poly_2(poly2);
+    
+    Nef_polyhedron nef1(poly1);
+    Nef_polyhedron nef2(poly2);
+    Nef_polyhedron nef=nef1+nef2;
     if(nef.is_simple()) {
         nef.convert_to_polyhedron(outpoly);
     }
@@ -1214,31 +1214,35 @@ Polyhedron2 takeUnitPolyhedron(){
 }
 
 
-    
+
 
 
 void
 Viewer::selectedVertDeformation(Vec3& selected_point,
                                 Vec3& selected_normal)
 {
-
     
     
-        int count=0;
-        int segmentNumber;
-        std::vector<PointVectorPair> points;
-        PointList vertices;
-        std::vector<Vec3> deformationPoints;
-        std::vector<Vec3> vec3Points;
-        double selected_x = selected_point.x;
-        double selected_y = selected_point.y;
-        double selected_z = selected_point.z;
-        
-        double normal_x = selected_normal.x;
-        double normal_y = selected_normal.y;
-        double normal_z = selected_normal.z;
-        double distance,disp;
-        std::vector<Point> deformationArea;
+    
+    int count=0;
+    int segmentNumber;
+    std::vector<PointVectorPair> points;
+    PointList vertices;
+    std::vector<Vec3> deformationPoints;
+    std::vector<Vec3> vec3Points;
+    //std::vector< std::set<Point> > segPoints;
+    std::vector<std::vector<Vector3> > pointsSets;
+    std::vector<std::vector<Vector3> > normalsSets;
+    std::vector<Poisson_reconstruction_function> functionSets;
+    double selected_x = selected_point.x;
+    double selected_y = selected_point.y;
+    double selected_z = selected_point.z;
+    
+    double normal_x = selected_normal.x;
+    double normal_y = selected_normal.y;
+    double normal_z = selected_normal.z;
+    double distance,disp;
+    std::vector<Point> deformationArea;
     for(unsigned i=0;i<meshPtr->numVerts();i++){
         Vec3 p_neighbor = meshPtr->getVertPos(i);
         vec3Points.push_back(p_neighbor);
@@ -1246,282 +1250,379 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     }
     meshPtr->replacePoints(vec3Points);
     meshPtr->makeMap();
-    segmentNumber=meshPtr->getSegmentNumberForPoint(Point(selected_x,selected_y,selected_z));
-    std::pair<std::multimap<int,Point>::iterator, std::multimap<int,Point>::iterator> p = meshPtr->getEqual_range(segmentNumber);
-
-
-    std::cout<<"segnum="<<segmentNumber<<std::endl;
-       std::cout<<"selected="<<selected_x<<" "<<selected_y<<" "<<selected_z<<std::endl;
-
     
-     std::set<Point> set;
-     for(std::multimap<int,Point>::iterator it = p.first;it!=p.second;it++){
-     set.insert(it->second);
-     }
-    for(auto itr=set.begin();itr!=set.end();itr++){
-        if(deformationSwitch==true){
-            distance=sqrt(std::pow((selected_x-itr->x()),2)+std::pow((selected_y-itr->y()),2)+std::pow((selected_z-itr->z()),2));
+    std::set<Point> settmp;
+    for(int i=0;i<meshPtr->numSeg();i++){
+        std::cout<<"meshPtr->numSeg()"<<i<<std::endl;
+        std::pair<std::multimap<int,Point>::iterator, std::multimap<int,Point>::iterator> p = meshPtr->getEqual_range(i);
+        for(std::multimap<int,Point>::iterator it = p.first;it!=p.second;it++){
+            std::cout<<"segpoints[i]="<<it->second<<std::endl;
             
-            if(distance>thr)disp=0;
-            else if(changedisp==true)disp=-d*exp(-sigma*std::pow(distance,2));
-            else if(changedisp==false)disp=d*exp(-sigma*std::pow(distance,2));
-            
-            Point p(itr->x()+disp*normal_x,
-                    itr->y()+disp*normal_y,
-                    itr->z()+disp*normal_z);
-            vertices.push_back(p);
-            std::cout<<p<<std::endl;
-            Vector tmp(0, 0, 0);
-            points.push_back(std::make_pair(p, tmp));
+            settmp.insert(it->second);
         }
-        else{
-            Point p(itr->x(),
-                    itr->y(),
-                    itr->z());
-            vertices.push_back(p);
-            Vector tmp(0, 0, 0);
-            points.push_back(std::make_pair(p, tmp));
+        // segPoints.push_back(settmp);
+        
+        
+        for(auto itr=settmp.begin();itr!=settmp.end();itr++){
+            points.push_back(std::make_pair(*itr, Vector(0,0,0)));
         }
-    }
-    /*    old version
-         for(unsigned i=0;i<meshPtr->numVerts();i++){
-         Vec3 p_neighbor = meshPtr->getVertPos(i);
-         if(deformationSwitch==true){
-         Vec3 p_neighbor = meshPtr->getVertPos(i);
-         distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
-         
-         if(distance>thr)disp=0;
-         else if(changedisp==true)disp=-d*exp(-sigma*pow(distance,2));
-         else if(changedisp==false)disp=d*exp(-sigma*pow(distance,2));
-         
-         Point p(p_neighbor.x+disp*normal_x,
-         p_neighbor.y+disp*normal_y,
-         p_neighbor.z+disp*normal_z);
-         vertices.push_back(p);
-             std::cout<<p<<std::endl;
-         Vector tmp(0, 0, 0);
-         points.push_back(std::make_pair(p, tmp));
-         }
-         else{
-         Point p(p_neighbor.x,
-         p_neighbor.y,
-         p_neighbor.z);
-         vertices.push_back(p);
-         Vector tmp(0, 0, 0);
-         points.push_back(std::make_pair(p, tmp));
-         }
-         
-         }
-*/
-
-
+        
         CGAL::pca_estimate_normals<Concurrency_tag>(points.begin(), points.end(), CGAL::First_of_pair_property_map<PointVectorPair>(), CGAL::Second_of_pair_property_map<PointVectorPair>(), nb_neighbors);
-
+        
         std::vector<PointVectorPair>::iterator unoriented_points_begin =
         CGAL::mst_orient_normals(points.begin(), points.end(),
                                  CGAL::First_of_pair_property_map<PointVectorPair>(),
                                  CGAL::Second_of_pair_property_map<PointVectorPair>(),
                                  nb_neighbors);
-
         std::vector<Vector3> points2;
         std::vector<Vector3> normals2;
-        std::vector<Point> points3;
+        for(int j=0;j<points.size();j++){
+            points2.push_back(Vector3(points[j].first.x(),points[j].first.y(),points[j].first.z()));
+            normals2.push_back(Vector3(points[j].second.x(),points[j].second.y(),points[j].second.z()));
+        }
+        pointsSets.push_back(points2);
+        normalsSets.push_back(normals2);
+        points.erase(points.begin(),points.end());
+        points2.erase(points2.begin(),points2.end());
+        normals2.erase(normals2.begin(),normals2.end());
+        settmp.erase(settmp.begin(),settmp.end());
+    }
     
-        
-        points.erase(unoriented_points_begin, points.end());
-        for(unsigned i=0; i<points.size(); i++){
-            Vector3 p_tmp(points[i].first.x(), points[i].first.y(),
-                          points[i].first.z());
-            Vector3 n_tmp(points[i].second.x(), points[i].second.y(),points[i].second.z());
-            points2.push_back(p_tmp);
-            normals2.push_back(n_tmp);
-        //    set.insert(Point(points[i].first.x(), points[i].first.y(),points[i].first.z()));
+    std::vector<Vector3> pointsVector3;
+    std::vector<Vector3> normalsVector3;
+    for(int i=0;i<meshPtr->numSeg();i++){
+        for(int j=0;j<pointsSets[i].size();j++){
+            pointsVector3.push_back(pointsSets[i][j]);
+            normalsVector3.push_back(normalsSets[i][j]);
         }
-      /*  for(auto itr = set.begin(); itr != set.end(); ++itr){
-            points2.push_back(Vector3(itr->x(),itr->y(),itr->z()));
-        }
+        std::cout<<"i="<<i<<std::endl;
+        functionSets.push_back(Poisson_reconstruction(pointsVector3,normalsVector3,meshPtr));
+        pointsVector3.erase(pointsVector3.begin(),pointsVector3.end());
+        normalsVector3.erase(normalsVector3.begin(),normalsVector3.end());
+    }
+    std::vector<Vector3> maxPoints;
+    std::vector<Vector3> maxNormals;
+    for(int i=0;i<meshPtr->numSeg();i++){
+    for(int j=0;j<pointsSets[i].size();j++){
+                    std::cout<<"func="<<functionSets[i](Point(pointsSets[i][j].x(),pointsSets[i][j].y(),pointsSets[i][j].z()))<<std::endl;
+        if(functionSets[i](Point(pointsSets[i][j].x(),pointsSets[i][j].y(),pointsSets[i][j].z()))>=0){
 
-    for(int i=0;i<points2.size();i++){
-            normals2.push_back(Vector3(0,0,0));
+            maxPoints.push_back(pointsSets[i][j]);
+            maxNormals.push_back(normalsSets[i][j]);
         }
-  */
-        for(unsigned i=0; i<points.size(); i++){
-            points3.push_back(Point(points[i].first.x(), points[i].first.y(),
-                                    points[i].first.z()));
-        }
-        
-        double averagespacing = CGAL::compute_average_spacing<Concurrency_tag>(points3.begin(), points3.end(),CGAL::Identity_property_map<Point>() ,nb_neighbors2);
-        
-        SurfaceMesh output_mesh;
-        
-        //HRBF reconstruction
-        if(reconstructionValue==0){
-            Hrbf_function function=HRBF_reconstruction(points2,normals2,meshPtr);
-            if(mesher==1){
-                const auto startTime = std::chrono::system_clock::now();
-                std::cout<<"Our delaunay start"<<std::endl;
-                Delaunay dl;
-                for (std::size_t i = 0; i < points2.size(); ++i) {
-                    dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
-                }
-                Cell_inside<Delaunay, Hrbf_function> cellin(dl, function,cellInsideValue);
-                Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b(dl, cellin);
-                output_mesh.delegate(b);
-                const auto endTime = std::chrono::system_clock::now();
-                const auto timeSpan = endTime - startTime;
-                std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
-                if(resamplingSwitch==1){
-                    Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
-                    Cell_inside<Delaunay, Hrbf_function> cellin2(dl2, function,cellInsideValue);
-                    Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b2(dl2, cellin2);
-                    output_mesh.delegate(b2);
-                }
-                
-            }
-            if(mesher==2){
-                const auto startTime = std::chrono::system_clock::now();
-                std::cout<<"CGAL's delaunay start"<<std::endl;
-                PointList pt;
-                for(std::size_t i=0;i<points2.size();i++){
-                    pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
-                }
-                Min_sphere  ms (pt.begin(), pt.end());
-                FT sm_sphere_radius = 5.0 * 5;
-                FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
-                Surface_3_hrbf surface(function,Sphere(ms.center(),ms.squared_radius()*1.5));
-                CGAL::Surface_mesh_default_criteria_3<STr>
-                criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
-                STr tr;
-                tr.insert(vertices.begin(), vertices.end());
-                C2t3 c2t3(tr);
-                CGAL::make_surface_mesh(c2t3,surface,criteria,CGAL::Manifold_with_boundary_tag());
-                CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
-                const auto endTime = std::chrono::system_clock::now();
-                const auto timeSpan = endTime - startTime;
-                std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
-            }
-        }
-        //HRBF_closed
-        else if(reconstructionValue==1){
-            Crbf_function function=HRBF_closed_reconstruction(points,points2,normals2,meshPtr);
-            if(mesher==1){
-                const auto startTime = std::chrono::system_clock::now();
-                std::cout<<"Our delaunay start"<<std::endl;
-                Delaunay dl;
-                for (std::size_t i = 0; i < points2.size(); ++i) {
-                    dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
-                }
-                Cell_inside<Delaunay, Crbf_function> cellin(dl, function,cellInsideValue);
-                Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b(dl, cellin);
-                output_mesh.delegate(b);
-                const auto endTime = std::chrono::system_clock::now();
-                const auto timeSpan = endTime - startTime;
-                std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
-                if(resamplingSwitch==1){
-                    Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
-                    Cell_inside<Delaunay, Crbf_function> cellin2(dl2, function,cellInsideValue);
-                    Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b2(dl2, cellin2);
-                    output_mesh.delegate(b2);
-                }
-                
-            }
-            if(mesher==2){
-                const auto startTime = std::chrono::system_clock::now();
-                std::cout<<"CGAL's delaunay start"<<std::endl;
-                PointList pt;
-                for(std::size_t i=0;i<points2.size();i++){
-                    pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
-                }
-                Min_sphere  ms (pt.begin(), pt.end());
-                FT sm_sphere_radius = 5.0 * 5.0;
-                FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
-                Surface_3_crbf surface(function,Sphere(ms.center(),ms.squared_radius()*1.5));
-                CGAL::Surface_mesh_default_criteria_3<STr>
-                criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
-                STr tr;
-                tr.insert(vertices.begin(), vertices.end());
-                C2t3 c2t3(tr);
-                CGAL::make_surface_mesh(c2t3,surface,criteria,CGAL::Manifold_with_boundary_tag());
-                CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
-                const auto endTime = std::chrono::system_clock::now();
-                const auto timeSpan = endTime - startTime;
-                std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
-            }
-        }
-        
-        // Poisson reconstruction
-        else if(reconstructionValue==2){
-            
-            Poisson_reconstruction_function function=Poisson_reconstruction(points2,normals2,meshPtr);
-
-            if(mesher==1){
-                const auto startTime = std::chrono::system_clock::now();
-                
-                std::cout<<"Our delaunay start"<<std::endl;
-                
-                Delaunay dl;
-                
-                for (std::size_t i = 0; i < points2.size(); ++i) {
-                    dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
-                }
-                
-                
-                
-                Cell_inside<Delaunay, Poisson_reconstruction_function> cellin(dl, function,cellInsideValue);
-                Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b(dl, cellin);
-                output_mesh.delegate(b);
-                const auto endTime = std::chrono::system_clock::now();
-                const auto timeSpan = endTime - startTime;
-                std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
-                if(resamplingSwitch==1){
-                    Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
-                    Cell_inside<Delaunay, Poisson_reconstruction_function> cellin2(dl2, function,cellInsideValue);
-                    Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b2(dl2, cellin2);
-                    output_mesh.delegate(b2);
-                }
-                
-            }
-            if(mesher==2){
-                const auto startTime = std::chrono::system_clock::now();
-                std::cout<<"CGAL's delaunay start"<<std::endl;
-                Point inner_point = function.get_inner_point();
-                Sphere bsphere = function.bounding_sphere();
-                FT radius = std::sqrt(bsphere.squared_radius());
-                
-                FT sm_sphere_radius = 5.0 * radius;
-                FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
-                Surface_3 surface(function,
-                                  Sphere(inner_point,sm_sphere_radius*sm_sphere_radius),
-                                  sm_dichotomy_error/sm_sphere_radius);
-                
-                CGAL::Surface_mesh_default_criteria_3<STr>
-                criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
-                
-                STr tr;
-                tr.insert(vertices.begin(), vertices.end());
-                C2t3 c2t3(tr);
-                CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
-                                        surface,  // implicit surface
-                                        criteria, // meshing criteria
-                                        CGAL::Manifold_with_boundary_tag());  // require manifold mesh
-                CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
-                const auto endTime = std::chrono::system_clock::now();
-                const auto timeSpan = endTime - startTime;
-                std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
-            }
-        }
-        if(mesher==1||mesher==2){
-            createOBJFile("out.obj",output_mesh);
-            createOFFFileForPolyhedron("out.off",output_mesh);
-            Polyhedron2 outpoly;
-           outpoly=takeUnitPolyhedron();
-            setMeshFromPolyhedron(outpoly, meshPtr);
-        }
-        
-        
-        std::cout<<"drawed"<<std::endl;
-    segmentedColor=false;
-   // }
+    }
+    }
+    std::cout<<"maxpoints="<<maxPoints.size()<<std::endl;
+    
+    std::vector<Point> points3;
+    for(unsigned i=0; i<maxPoints.size(); i++){
+        points3.push_back(Point(maxPoints[i].x(), maxPoints[i].y(),
+                                maxPoints[i].z()));
+    }
+    
+    double averagespacing = CGAL::compute_average_spacing<Concurrency_tag>(points3.begin(), points3.end(),CGAL::Identity_property_map<Point>() ,nb_neighbors2);
+    Poisson_reconstruction_function function=Poisson_reconstruction(maxPoints,maxNormals,meshPtr);
+    SurfaceMesh output_mesh;
+    const auto startTime = std::chrono::system_clock::now();
+    std::cout<<"CGAL's delaunay start"<<std::endl;
+    Point inner_point = function.get_inner_point();
+    Sphere bsphere = function.bounding_sphere();
+    FT radius = std::sqrt(bsphere.squared_radius());
+    
+    FT sm_sphere_radius = 5.0 * radius;
+    FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
+    Surface_3 surface(function,
+                      Sphere(inner_point,sm_sphere_radius*sm_sphere_radius),
+                      sm_dichotomy_error/sm_sphere_radius);
+    
+    CGAL::Surface_mesh_default_criteria_3<STr>
+    criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+    
+    STr tr;
+    tr.insert(vertices.begin(), vertices.end());
+    C2t3 c2t3(tr);
+    CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
+                            surface,  // implicit surface
+                            criteria, // meshing criteria
+                            CGAL::Manifold_with_boundary_tag());  // require manifold mesh
+    CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+    const auto endTime = std::chrono::system_clock::now();
+    const auto timeSpan = endTime - startTime;
+    std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+    setMeshFromPolyhedron(output_mesh, meshPtr);
 }
 
+/*
+ segmentNumber=meshPtr->getSegmentNumberForPoint(Point(selected_x,selected_y,selected_z));
+ std::pair<std::multimap<int,Point>::iterator, std::multimap<int,Point>::iterator> p = meshPtr->getEqual_range(segmentNumber);
+ 
+ 
+ std::cout<<"segnum="<<segmentNumber<<std::endl;
+ std::cout<<"selected="<<selected_x<<" "<<selected_y<<" "<<selected_z<<std::endl;
+ 
+ 
+ std::set<Point> set;
+ for(std::multimap<int,Point>::iterator it = p.first;it!=p.second;it++){
+ set.insert(it->second);
+ }
+ for(auto itr=set.begin();itr!=set.end();itr++){
+ if(deformationSwitch==true){
+ distance=sqrt(std::pow((selected_x-itr->x()),2)+std::pow((selected_y-itr->y()),2)+std::pow((selected_z-itr->z()),2));
+ 
+ if(distance>thr)disp=0;
+ else if(changedisp==true)disp=-d*exp(-sigma*std::pow(distance,2));
+ else if(changedisp==false)disp=d*exp(-sigma*std::pow(distance,2));
+ 
+ Point p(itr->x()+disp*normal_x,
+ itr->y()+disp*normal_y,
+ itr->z()+disp*normal_z);
+ vertices.push_back(p);
+ std::cout<<p<<std::endl;
+ Vector tmp(0, 0, 0);
+ points.push_back(std::make_pair(p, tmp));
+ }
+ else{
+ Point p(itr->x(),
+ itr->y(),
+ itr->z());
+ vertices.push_back(p);
+ Vector tmp(0, 0, 0);
+ points.push_back(std::make_pair(p, tmp));
+ }
+ }
+ /*    old version
+ for(unsigned i=0;i<meshPtr->numVerts();i++){
+ Vec3 p_neighbor = meshPtr->getVertPos(i);
+ if(deformationSwitch==true){
+ Vec3 p_neighbor = meshPtr->getVertPos(i);
+ distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
+ 
+ if(distance>thr)disp=0;
+ else if(changedisp==true)disp=-d*exp(-sigma*pow(distance,2));
+ else if(changedisp==false)disp=d*exp(-sigma*pow(distance,2));
+ 
+ Point p(p_neighbor.x+disp*normal_x,
+ p_neighbor.y+disp*normal_y,
+ p_neighbor.z+disp*normal_z);
+ vertices.push_back(p);
+ std::cout<<p<<std::endl;
+ Vector tmp(0, 0, 0);
+ points.push_back(std::make_pair(p, tmp));
+ }
+ else{
+ Point p(p_neighbor.x,
+ p_neighbor.y,
+ p_neighbor.z);
+ vertices.push_back(p);
+ Vector tmp(0, 0, 0);
+ points.push_back(std::make_pair(p, tmp));
+ }
+ 
+ }
+ */
+/*
+ 
+ CGAL::pca_estimate_normals<Concurrency_tag>(points.begin(), points.end(), CGAL::First_of_pair_property_map<PointVectorPair>(), CGAL::Second_of_pair_property_map<PointVectorPair>(), nb_neighbors);
+ 
+ std::vector<PointVectorPair>::iterator unoriented_points_begin =
+ CGAL::mst_orient_normals(points.begin(), points.end(),
+ CGAL::First_of_pair_property_map<PointVectorPair>(),
+ CGAL::Second_of_pair_property_map<PointVectorPair>(),
+ nb_neighbors);
+ 
+ std::vector<Vector3> points2;
+ std::vector<Vector3> normals2;
+ std::vector<Point> points3;
+ 
+ 
+ points.erase(unoriented_points_begin, points.end());
+ for(unsigned i=0; i<points.size(); i++){
+ Vector3 p_tmp(points[i].first.x(), points[i].first.y(),
+ points[i].first.z());
+ Vector3 n_tmp(points[i].second.x(), points[i].second.y(),points[i].second.z());
+ points2.push_back(p_tmp);
+ normals2.push_back(n_tmp);
+ //    set.insert(Point(points[i].first.x(), points[i].first.y(),points[i].first.z()));
+ }
+ /*  for(auto itr = set.begin(); itr != set.end(); ++itr){
+ points2.push_back(Vector3(itr->x(),itr->y(),itr->z()));
+ }
+ 
+ for(int i=0;i<points2.size();i++){
+ normals2.push_back(Vector3(0,0,0));
+ }
+ */
+//    SurfaceMesh output_mesh;
+
+/*
+ //HRBF reconstruction
+ if(reconstructionValue==0){
+ Hrbf_function function=HRBF_reconstruction(points2,normals2,meshPtr);
+ if(mesher==1){
+ const auto startTime = std::chrono::system_clock::now();
+ std::cout<<"Our delaunay start"<<std::endl;
+ Delaunay dl;
+ for (std::size_t i = 0; i < points2.size(); ++i) {
+ dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+ }
+ Cell_inside<Delaunay, Hrbf_function> cellin(dl, function,cellInsideValue);
+ Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b(dl, cellin);
+ output_mesh.delegate(b);
+ const auto endTime = std::chrono::system_clock::now();
+ const auto timeSpan = endTime - startTime;
+ std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+ if(resamplingSwitch==1){
+ Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
+ Cell_inside<Delaunay, Hrbf_function> cellin2(dl2, function,cellInsideValue);
+ Surface_builder<Delaunay, Cell_inside<Delaunay, Hrbf_function>, SurfaceMesh> b2(dl2, cellin2);
+ output_mesh.delegate(b2);
+ }
+ 
+ }
+ if(mesher==2){
+ const auto startTime = std::chrono::system_clock::now();
+ std::cout<<"CGAL's delaunay start"<<std::endl;
+ PointList pt;
+ for(std::size_t i=0;i<points2.size();i++){
+ pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
+ }
+ Min_sphere  ms (pt.begin(), pt.end());
+ FT sm_sphere_radius = 5.0 * 5;
+ FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
+ Surface_3_hrbf surface(function,Sphere(ms.center(),ms.squared_radius()*1.5));
+ CGAL::Surface_mesh_default_criteria_3<STr>
+ criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+ STr tr;
+ tr.insert(vertices.begin(), vertices.end());
+ C2t3 c2t3(tr);
+ CGAL::make_surface_mesh(c2t3,surface,criteria,CGAL::Manifold_with_boundary_tag());
+ CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+ const auto endTime = std::chrono::system_clock::now();
+ const auto timeSpan = endTime - startTime;
+ std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+ }
+ }
+ //HRBF_closed
+ else if(reconstructionValue==1){
+ Crbf_function function=HRBF_closed_reconstruction(points,points2,normals2,meshPtr);
+ if(mesher==1){
+ const auto startTime = std::chrono::system_clock::now();
+ std::cout<<"Our delaunay start"<<std::endl;
+ Delaunay dl;
+ for (std::size_t i = 0; i < points2.size(); ++i) {
+ dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+ }
+ Cell_inside<Delaunay, Crbf_function> cellin(dl, function,cellInsideValue);
+ Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b(dl, cellin);
+ output_mesh.delegate(b);
+ const auto endTime = std::chrono::system_clock::now();
+ const auto timeSpan = endTime - startTime;
+ std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+ if(resamplingSwitch==1){
+ Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
+ Cell_inside<Delaunay, Crbf_function> cellin2(dl2, function,cellInsideValue);
+ Surface_builder<Delaunay, Cell_inside<Delaunay, Crbf_function>, SurfaceMesh> b2(dl2, cellin2);
+ output_mesh.delegate(b2);
+ }
+ 
+ }
+ if(mesher==2){
+ const auto startTime = std::chrono::system_clock::now();
+ std::cout<<"CGAL's delaunay start"<<std::endl;
+ PointList pt;
+ for(std::size_t i=0;i<points2.size();i++){
+ pt.push_back(Point(points2[i][0], points2[i][1], points2[i][2]));
+ }
+ Min_sphere  ms (pt.begin(), pt.end());
+ FT sm_sphere_radius = 5.0 * 5.0;
+ FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
+ Surface_3_crbf surface(function,Sphere(ms.center(),ms.squared_radius()*1.5));
+ CGAL::Surface_mesh_default_criteria_3<STr>
+ criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+ STr tr;
+ tr.insert(vertices.begin(), vertices.end());
+ C2t3 c2t3(tr);
+ CGAL::make_surface_mesh(c2t3,surface,criteria,CGAL::Manifold_with_boundary_tag());
+ CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+ const auto endTime = std::chrono::system_clock::now();
+ const auto timeSpan = endTime - startTime;
+ std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+ }
+ }
+ 
+ // Poisson reconstruction
+ else if(reconstructionValue==2){
+ 
+ Poisson_reconstruction_function function=Poisson_reconstruction(points2,normals2,meshPtr);
+ 
+ if(mesher==1){
+ const auto startTime = std::chrono::system_clock::now();
+ 
+ std::cout<<"Our delaunay start"<<std::endl;
+ 
+ Delaunay dl;
+ 
+ for (std::size_t i = 0; i < points2.size(); ++i) {
+ dl.insert(Delaunay::Point(points2[i][0], points2[i][1],points2[i][2]));
+ }
+ 
+ 
+ 
+ Cell_inside<Delaunay, Poisson_reconstruction_function> cellin(dl, function,cellInsideValue);
+ Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b(dl, cellin);
+ output_mesh.delegate(b);
+ const auto endTime = std::chrono::system_clock::now();
+ const auto timeSpan = endTime - startTime;
+ std::cout << "Delaunay's time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+ if(resamplingSwitch==1){
+ Delaunay dl2=resampling(output_mesh,meshPtr,averagespacing,dl);
+ Cell_inside<Delaunay, Poisson_reconstruction_function> cellin2(dl2, function,cellInsideValue);
+ Surface_builder<Delaunay, Cell_inside<Delaunay, Poisson_reconstruction_function>, SurfaceMesh> b2(dl2, cellin2);
+ output_mesh.delegate(b2);
+ }
+ 
+ }
+ if(mesher==2){
+ const auto startTime = std::chrono::system_clock::now();
+ std::cout<<"CGAL's delaunay start"<<std::endl;
+ Point inner_point = function.get_inner_point();
+ Sphere bsphere = function.bounding_sphere();
+ FT radius = std::sqrt(bsphere.squared_radius());
+ 
+ FT sm_sphere_radius = 5.0 * radius;
+ FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
+ Surface_3 surface(function,
+ Sphere(inner_point,sm_sphere_radius*sm_sphere_radius),
+ sm_dichotomy_error/sm_sphere_radius);
+ 
+ CGAL::Surface_mesh_default_criteria_3<STr>
+ criteria(sm_angle, sm_radius*averagespacing, sm_distance*averagespacing);
+ 
+ STr tr;
+ tr.insert(vertices.begin(), vertices.end());
+ C2t3 c2t3(tr);
+ CGAL::make_surface_mesh(c2t3,     // reconstructed mesh
+ surface,  // implicit surface
+ criteria, // meshing criteria
+ CGAL::Manifold_with_boundary_tag());  // require manifold mesh
+ CGAL::output_surface_facets_to_polyhedron(c2t3, output_mesh);
+ const auto endTime = std::chrono::system_clock::now();
+ const auto timeSpan = endTime - startTime;
+ std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
+ }
+ }
+ if(mesher==1||mesher==2){
+ createOBJFile("out.obj",output_mesh);
+ createOFFFileForPolyhedron("out.off",output_mesh);
+ Polyhedron2 outpoly;
+ outpoly=takeUnitPolyhedron();
+ setMeshFromPolyhedron(outpoly, meshPtr);
+ }
+ 
+ 
+ std::cout<<"drawed"<<std::endl;
+ segmentedColor=false;
+ 
+ }
+ */
 

@@ -75,9 +75,8 @@ public:
     void makeMap();
     void replacePolyhedron();
     Polyhedron getPolyhedron(){return mesh;}
-    //void takeUnitPolyhedron();
-    //void setMeshFromPolyhedron();
-
+    int numSeg(){return (int)number_of_segments;}
+    
 private:
     
   std::vector<Vec3> mPoints;
