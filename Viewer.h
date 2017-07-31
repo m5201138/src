@@ -68,6 +68,7 @@ public:
     //added
     static void selectedVertDeformation(Vec3& selected_point,Vec3& selected_normal);
     static void read(const char*);
+    void initSeg();
 };
 
 #endif // VIEWER_H

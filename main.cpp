@@ -73,6 +73,7 @@ int main(int argc, char** argv)
     Viewer viewer;
     viewer.read("config.txt");
     viewer.meshPtr = mesh;
+    viewer.initSeg();
     viewer.verbose = verbose;
     viewer.clearData();
     viewer.init(argc,argv);

@@ -159,7 +159,12 @@ int gridsize;
 double boundingBox;
 double cellInsideValue;
 bool segmentedColor=true;
-
+std::vector<std::vector<Vector3> > pointsSets;
+std::vector<std::vector<Vector3> > normalsSets;
+std::vector<Poisson_reconstruction_function> functionSets;
+std::vector<Vector3> maxPoints;
+std::vector<Vector3> maxNormals;
+std::vector<Poisson_reconstruction_function>  originalFunction;
 // Precompute and keep the grids used by MC algorithm
 struct MCGrid {
     std::vector<Vector3> structuredGrid;
@@ -844,6 +849,7 @@ setMeshFromPolyhedron(SurfaceMesh& output_mesh,
         Vec3 v(CGAL::to_double(vi->point().x()),
                CGAL::to_double(vi->point().y()),
                CGAL::to_double(vi->point().z()));
+                std::cout<<vi->point()<<std::endl;
         vertices.push_back(v);
     }
     
@@ -888,7 +894,6 @@ setMeshFromPolyhedron(Polyhedron2& output_mesh,TriMesh* meshPtr)
         Vec3 v(CGAL::to_double(vi->point().x()),
                CGAL::to_double(vi->point().y()),
                CGAL::to_double(vi->point().z()));
-        vertices.push_back(v);
     }
     
     typedef CGAL::Inverse_index<VCI> Index;
@@ -1215,38 +1220,12 @@ Polyhedron2 takeUnitPolyhedron(){
 
 
 
-
-
-void
-Viewer::selectedVertDeformation(Vec3& selected_point,
-                                Vec3& selected_normal)
-{
-    
-    
-    
-    int count=0;
-    int segmentNumber;
-    std::vector<PointVectorPair> points;
-    PointList vertices;
-    std::vector<Vec3> deformationPoints;
-    std::vector<Vec3> vec3Points;
-    //std::vector< std::set<Point> > segPoints;
-    std::vector<std::vector<Vector3> > pointsSets;
-    std::vector<std::vector<Vector3> > normalsSets;
-    std::vector<Poisson_reconstruction_function> functionSets;
-    double selected_x = selected_point.x;
-    double selected_y = selected_point.y;
-    double selected_z = selected_point.z;
-    
-    double normal_x = selected_normal.x;
-    double normal_y = selected_normal.y;
-    double normal_z = selected_normal.z;
-    double distance,disp;
-    std::vector<Point> deformationArea;
+void Viewer::initSeg(){
+       std::vector<PointVectorPair> points;
+       std::vector<Vec3> vec3Points;
     for(unsigned i=0;i<meshPtr->numVerts();i++){
         Vec3 p_neighbor = meshPtr->getVertPos(i);
         vec3Points.push_back(p_neighbor);
-        
     }
     meshPtr->replacePoints(vec3Points);
     meshPtr->makeMap();
@@ -1300,17 +1279,15 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
         pointsVector3.erase(pointsVector3.begin(),pointsVector3.end());
         normalsVector3.erase(normalsVector3.begin(),normalsVector3.end());
     }
-    std::vector<Vector3> maxPoints;
-    std::vector<Vector3> maxNormals;
     for(int i=0;i<meshPtr->numSeg();i++){
-    for(int j=0;j<pointsSets[i].size();j++){
-                    std::cout<<"func="<<functionSets[i](Point(pointsSets[i][j].x(),pointsSets[i][j].y(),pointsSets[i][j].z()))<<std::endl;
-        if(functionSets[i](Point(pointsSets[i][j].x(),pointsSets[i][j].y(),pointsSets[i][j].z()))>=0){
-
-            maxPoints.push_back(pointsSets[i][j]);
-            maxNormals.push_back(normalsSets[i][j]);
+        for(int j=0;j<pointsSets[i].size();j++){
+            std::cout<<"func="<<functionSets[i](Point(pointsSets[i][j].x(),pointsSets[i][j].y(),pointsSets[i][j].z()))<<std::endl;
+            if(functionSets[i](Point(pointsSets[i][j].x(),pointsSets[i][j].y(),pointsSets[i][j].z()))>=0){
+                
+                maxPoints.push_back(pointsSets[i][j]);
+                maxNormals.push_back(normalsSets[i][j]);
+            }
         }
-    }
     }
     std::cout<<"maxpoints="<<maxPoints.size()<<std::endl;
     
@@ -1321,17 +1298,117 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     }
     
     double averagespacing = CGAL::compute_average_spacing<Concurrency_tag>(points3.begin(), points3.end(),CGAL::Identity_property_map<Point>() ,nb_neighbors2);
-    Poisson_reconstruction_function function=Poisson_reconstruction(maxPoints,maxNormals,meshPtr);
+    originalFunction.push_back(Poisson_reconstruction(maxPoints,maxNormals,meshPtr));
+}
+
+
+void
+Viewer::selectedVertDeformation(Vec3& selected_point,
+                                Vec3& selected_normal)
+{
+     PointList vertices;
+    std::vector<PointVectorPair> points;
+    int selectedSeg;
+    double selected_x = selected_point.x;
+    double selected_y = selected_point.y;
+    double selected_z = selected_point.z;
+    
+    double normal_x = selected_normal.x;
+    double normal_y = selected_normal.y;
+    double normal_z = selected_normal.z;
+    double distance,disp;
+
+    std::cout<<"maxpoints="<<maxPoints.size()<<std::endl;
+    
+    std::vector<Point> points3;
+    for(unsigned i=0; i<maxPoints.size(); i++){
+        points3.push_back(Point(maxPoints[i].x(), maxPoints[i].y(),
+                                maxPoints[i].z()));
+    }
+    for(int i=0;i<meshPtr->numSeg();i++){
+        for(int j=0;j<pointsSets[i].size();j++){
+            if(pointsSets[i][j].x()==selected_x&&pointsSets[i][j].y()==selected_y&&pointsSets[i][j].z()==selected_z){
+                selectedSeg=i;
+            }
+        }
+    }
+    for(int i=0;i<pointsSets[selectedSeg].size();i++){
+        if(deformationSwitch==true){
+            distance=sqrt(std::pow((selected_x-pointsSets[selectedSeg][i].x()),2)+std::pow((selected_y-pointsSets[selectedSeg][i].y()),2)+std::pow((selected_z-pointsSets[selectedSeg][i].z()),2));
+            
+            if(distance>thr)disp=0;
+            else if(changedisp==true)disp=-d*exp(-sigma*std::pow(distance,2));
+            else if(changedisp==false)disp=d*exp(-sigma*std::pow(distance,2));
+            
+            Point p(pointsSets[selectedSeg][i].x()+disp*normal_x,
+                    pointsSets[selectedSeg][i].y()+disp*normal_y,
+                    pointsSets[selectedSeg][i].z()+disp*normal_z);
+            vertices.push_back(p);
+            std::cout<<p<<std::endl;
+            Vector tmp(0, 0, 0);
+            points.push_back(std::make_pair(p, tmp));
+        }
+        else{
+            Point p(pointsSets[selectedSeg][i].x(),
+                    pointsSets[selectedSeg][i].y(),
+                    pointsSets[selectedSeg][i].z());
+            vertices.push_back(p);
+            Vector tmp(0, 0, 0);
+            points.push_back(std::make_pair(p, tmp));
+        }
+    }
+    CGAL::pca_estimate_normals<Concurrency_tag>(points.begin(), points.end(), CGAL::First_of_pair_property_map<PointVectorPair>(), CGAL::Second_of_pair_property_map<PointVectorPair>(), nb_neighbors);
+    
+    std::vector<PointVectorPair>::iterator unoriented_points_begin =
+    CGAL::mst_orient_normals(points.begin(), points.end(),
+                             CGAL::First_of_pair_property_map<PointVectorPair>(),
+                             CGAL::Second_of_pair_property_map<PointVectorPair>(),
+                             nb_neighbors);
+    
+    std::vector<Vector3> points2;
+    std::vector<Vector3> normals2;
+    
+    points.erase(unoriented_points_begin, points.end());
+    for(unsigned i=0; i<points.size(); i++){
+        Vector3 p_tmp(points[i].first.x(), points[i].first.y(),
+                      points[i].first.z());
+        Vector3 n_tmp(points[i].second.x(), points[i].second.y(),points[i].second.z());
+        points2.push_back(p_tmp);
+        normals2.push_back(n_tmp);
+        //    set.insert(Point(points[i].first.x(), points[i].first.y(),points[i].first.z()));
+    }
+    points.erase(unoriented_points_begin, points.end());
+    for(unsigned i=0; i<points.size(); i++){
+        Vector3 p_tmp(points[i].first.x(), points[i].first.y(),
+                      points[i].first.z());
+        Vector3 n_tmp(points[i].second.x(), points[i].second.y(),points[i].second.z());
+        points2.push_back(p_tmp);
+        normals2.push_back(n_tmp);
+    }
+    Poisson_reconstruction_function function1=Poisson_reconstruction(points2,normals2,meshPtr);
+    for(int i=0;i<points2.size();i++){
+            if(function1(Point(points2[i].x(),points2[i].y(),points2[i].z()))>=0){
+                maxPoints.push_back(points2[i]);
+                maxNormals.push_back(normals2[i]);
+        }
+    }
+    Poisson_reconstruction_function function2=Poisson_reconstruction(maxPoints,maxNormals,meshPtr);
+    
+    std::cout<<"selected seg"<<selectedSeg<<std::endl;
+    
+    double averagespacing = CGAL::compute_average_spacing<Concurrency_tag>(points3.begin(), points3.end(),CGAL::Identity_property_map<Point>() ,nb_neighbors2);
+
     SurfaceMesh output_mesh;
     const auto startTime = std::chrono::system_clock::now();
     std::cout<<"CGAL's delaunay start"<<std::endl;
-    Point inner_point = function.get_inner_point();
-    Sphere bsphere = function.bounding_sphere();
+    Point inner_point = function2.get_inner_point();
+    Sphere bsphere = function2.bounding_sphere();
     FT radius = std::sqrt(bsphere.squared_radius());
+    std::cout<<"------------test--------------"<<std::endl;
     
     FT sm_sphere_radius = 5.0 * radius;
     FT sm_dichotomy_error = sm_distance*averagespacing/1000.0; // Dichotomy error must be << sm_distance
-    Surface_3 surface(function,
+    Surface_3 surface(function2,
                       Sphere(inner_point,sm_sphere_radius*sm_sphere_radius),
                       sm_dichotomy_error/sm_sphere_radius);
     
@@ -1350,110 +1427,8 @@ Viewer::selectedVertDeformation(Vec3& selected_point,
     const auto timeSpan = endTime - startTime;
     std::cout << "Delaunay(CGAL)'s time:" << std::chrono::duration_cast<std::chrono::milliseconds>(timeSpan).count() << "[ms]" << std::endl;
     setMeshFromPolyhedron(output_mesh, meshPtr);
+     segmentedColor=false;
 }
-
-/*
- segmentNumber=meshPtr->getSegmentNumberForPoint(Point(selected_x,selected_y,selected_z));
- std::pair<std::multimap<int,Point>::iterator, std::multimap<int,Point>::iterator> p = meshPtr->getEqual_range(segmentNumber);
- 
- 
- std::cout<<"segnum="<<segmentNumber<<std::endl;
- std::cout<<"selected="<<selected_x<<" "<<selected_y<<" "<<selected_z<<std::endl;
- 
- 
- std::set<Point> set;
- for(std::multimap<int,Point>::iterator it = p.first;it!=p.second;it++){
- set.insert(it->second);
- }
- for(auto itr=set.begin();itr!=set.end();itr++){
- if(deformationSwitch==true){
- distance=sqrt(std::pow((selected_x-itr->x()),2)+std::pow((selected_y-itr->y()),2)+std::pow((selected_z-itr->z()),2));
- 
- if(distance>thr)disp=0;
- else if(changedisp==true)disp=-d*exp(-sigma*std::pow(distance,2));
- else if(changedisp==false)disp=d*exp(-sigma*std::pow(distance,2));
- 
- Point p(itr->x()+disp*normal_x,
- itr->y()+disp*normal_y,
- itr->z()+disp*normal_z);
- vertices.push_back(p);
- std::cout<<p<<std::endl;
- Vector tmp(0, 0, 0);
- points.push_back(std::make_pair(p, tmp));
- }
- else{
- Point p(itr->x(),
- itr->y(),
- itr->z());
- vertices.push_back(p);
- Vector tmp(0, 0, 0);
- points.push_back(std::make_pair(p, tmp));
- }
- }
- /*    old version
- for(unsigned i=0;i<meshPtr->numVerts();i++){
- Vec3 p_neighbor = meshPtr->getVertPos(i);
- if(deformationSwitch==true){
- Vec3 p_neighbor = meshPtr->getVertPos(i);
- distance=sqrt(pow((selected_x-p_neighbor.x),2)+pow((selected_y-p_neighbor.y),2)+pow((selected_z-p_neighbor.z),2));
- 
- if(distance>thr)disp=0;
- else if(changedisp==true)disp=-d*exp(-sigma*pow(distance,2));
- else if(changedisp==false)disp=d*exp(-sigma*pow(distance,2));
- 
- Point p(p_neighbor.x+disp*normal_x,
- p_neighbor.y+disp*normal_y,
- p_neighbor.z+disp*normal_z);
- vertices.push_back(p);
- std::cout<<p<<std::endl;
- Vector tmp(0, 0, 0);
- points.push_back(std::make_pair(p, tmp));
- }
- else{
- Point p(p_neighbor.x,
- p_neighbor.y,
- p_neighbor.z);
- vertices.push_back(p);
- Vector tmp(0, 0, 0);
- points.push_back(std::make_pair(p, tmp));
- }
- 
- }
- */
-/*
- 
- CGAL::pca_estimate_normals<Concurrency_tag>(points.begin(), points.end(), CGAL::First_of_pair_property_map<PointVectorPair>(), CGAL::Second_of_pair_property_map<PointVectorPair>(), nb_neighbors);
- 
- std::vector<PointVectorPair>::iterator unoriented_points_begin =
- CGAL::mst_orient_normals(points.begin(), points.end(),
- CGAL::First_of_pair_property_map<PointVectorPair>(),
- CGAL::Second_of_pair_property_map<PointVectorPair>(),
- nb_neighbors);
- 
- std::vector<Vector3> points2;
- std::vector<Vector3> normals2;
- std::vector<Point> points3;
- 
- 
- points.erase(unoriented_points_begin, points.end());
- for(unsigned i=0; i<points.size(); i++){
- Vector3 p_tmp(points[i].first.x(), points[i].first.y(),
- points[i].first.z());
- Vector3 n_tmp(points[i].second.x(), points[i].second.y(),points[i].second.z());
- points2.push_back(p_tmp);
- normals2.push_back(n_tmp);
- //    set.insert(Point(points[i].first.x(), points[i].first.y(),points[i].first.z()));
- }
- /*  for(auto itr = set.begin(); itr != set.end(); ++itr){
- points2.push_back(Vector3(itr->x(),itr->y(),itr->z()));
- }
- 
- for(int i=0;i<points2.size();i++){
- normals2.push_back(Vector3(0,0,0));
- }
- */
-//    SurfaceMesh output_mesh;
-
 /*
  //HRBF reconstruction
  if(reconstructionValue==0){
